@@ -18,7 +18,7 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
-const WPPROTECTOR_VERSION = '1.0.2';
+const WPPROTECTOR_VERSION = '1.0.0';
 const WPPROTECTOR_API_URL = 'https://api.wp-protector.de/api';
 define( 'WPPROTECTOR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WPPROTECTOR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

@@ -1,20 +1,20 @@
-/* WPProtector Native but Premium UI */
-.wpprotector-wrap {
+/* Metzler_Webshield Native but Premium UI */
+.metzler-webshield-wrap {
     max-width: 1200px;
     padding-bottom: 60px; /* Prevent WP Footer from overlapping */
 }
 
 /* Tab Spacing Fixes */
-.wpprotector-nav-tabs {
+.metzler-webshield-nav-tabs {
     margin-bottom: 20px !important;
     padding-bottom: 0;
 }
-.wpprotector-nav-tabs .nav-tab {
+.metzler-webshield-nav-tabs .nav-tab {
     margin-right: 4px;
     margin-bottom: -1px; /* Overlap border bottom */
 }
 
-.wpprotector-hero {
+.metzler-webshield-hero {
     background: #fff;
     border: 1px solid #c3c4c7;
     border-radius: 4px;
@@ -25,28 +25,28 @@
 }
 
 /* AV Status Colors */
-.wpprotector-hero.status-safe {
+.metzler-webshield-hero.status-safe {
     border-top: 4px solid #00a32a;
 }
-.wpprotector-hero.status-safe .hero-icon .dashicons { color: #00a32a; }
+.metzler-webshield-hero.status-safe .hero-icon .dashicons { color: #00a32a; }
 
-.wpprotector-hero.status-warning {
+.metzler-webshield-hero.status-warning {
     border-top: 4px solid #d63638;
 }
-.wpprotector-hero.status-warning .hero-icon .dashicons { color: #d63638; }
+.metzler-webshield-hero.status-warning .hero-icon .dashicons { color: #d63638; }
 
-.wpprotector-hero.status-loading {
+.metzler-webshield-hero.status-loading {
     border-top: 4px solid #c3c4c7;
 }
-.wpprotector-hero.status-loading .hero-icon .dashicons { 
+.metzler-webshield-hero.status-loading .hero-icon .dashicons { 
     color: #c3c4c7; 
     animation: pulse-icon 1.5s infinite;
 }
 
-.wpprotector-hero.status-scanning {
+.metzler-webshield-hero.status-scanning {
     border-top: 4px solid #2271b1;
 }
-.wpprotector-hero.status-scanning .hero-icon .dashicons { 
+.metzler-webshield-hero.status-scanning .hero-icon .dashicons { 
     color: #2271b1; 
     animation: pulse-icon 1.5s infinite;
 }
@@ -57,7 +57,7 @@
     100% { transform: scale(1); opacity: 1; }
 }
 
-.wpprotector-hero-inner {
+.metzler-webshield-hero-inner {
     display: flex;
     align-items: center;
     gap: 25px;
@@ -88,7 +88,7 @@
     margin: 0 0 20px 0;
 }
 
-.wpprotector-smart-scan-btn {
+.metzler-webshield-smart-scan-btn {
     font-size: 16px !important;
     padding: 5px 25px !important;
     height: auto !important;
@@ -161,7 +161,7 @@
 }
 
 /* Stats Bar */
-.wpprotector-stats-bar {
+.metzler-webshield-stats-bar {
     display: flex;
     gap: 20px;
     margin-bottom: 20px;
@@ -200,19 +200,19 @@
 }
 
 /* Logs */
-tr.wpprotector-row-error { background-color: #fcf0f1 !important; border-left: 4px solid #d63638; }
-tr.wpprotector-row-warning { background-color: #fdf2e1 !important; border-left: 4px solid #f0b849; }
-tr.wpprotector-row-success { background-color: #f0f9f1 !important; border-left: 4px solid #00a32a; }
-tr.wpprotector-row-info { border-left: 4px solid #c3c4c7; }
+tr.metzler-webshield-row-error { background-color: #fcf0f1 !important; border-left: 4px solid #d63638; }
+tr.metzler-webshield-row-warning { background-color: #fdf2e1 !important; border-left: 4px solid #f0b849; }
+tr.metzler-webshield-row-success { background-color: #f0f9f1 !important; border-left: 4px solid #00a32a; }
+tr.metzler-webshield-row-info { border-left: 4px solid #c3c4c7; }
 
-.wpprotector-log-severity-info { color: #2271b1; }
-.wpprotector-log-severity-success { color: #00a32a; }
-.wpprotector-log-severity-warning { color: #dba617; font-weight: 500; }
-.wpprotector-log-severity-error { color: #d63638; font-weight: 600; }
-.wpprotector-log-severity-resolved { color: #646970; text-decoration: line-through; }
-tr.wpprotector-row-resolved button { display: none !important; }
+.metzler-webshield-log-severity-info { color: #2271b1; }
+.metzler-webshield-log-severity-success { color: #00a32a; }
+.metzler-webshield-log-severity-warning { color: #dba617; font-weight: 500; }
+.metzler-webshield-log-severity-error { color: #d63638; font-weight: 600; }
+.metzler-webshield-log-severity-resolved { color: #646970; text-decoration: line-through; }
+tr.metzler-webshield-row-resolved button { display: none !important; }
 
-.wpprotector-log-module {
+.metzler-webshield-log-module {
     text-transform: uppercase;
     font-size: 11px;
     background: #f0f0f1;
@@ -221,7 +221,7 @@ tr.wpprotector-row-resolved button { display: none !important; }
     color: #3c434a;
 }
 /* UI Polish for Web Design Agency standard */
-.wpprotector-postbox {
+.metzler-webshield-postbox {
     border: 1px solid #c3c4c7;
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0,0,0,.04);
@@ -229,7 +229,7 @@ tr.wpprotector-row-resolved button { display: none !important; }
     margin-bottom: 25px;
     overflow: hidden;
 }
-.wpprotector-postbox h2.hndle {
+.metzler-webshield-postbox h2.hndle {
     font-size: 15px;
     font-weight: 600;
     padding: 16px 20px;
@@ -239,14 +239,14 @@ tr.wpprotector-row-resolved button { display: none !important; }
     background: #fdfdfd;
     margin: 0;
 }
-.wpprotector-postbox h2.hndle .dashicons {
+.metzler-webshield-postbox h2.hndle .dashicons {
     margin-right: 12px;
     color: #646970;
 }
-.wpprotector-postbox h2.hndle[style*="color: #d63638"] .dashicons {
+.metzler-webshield-postbox h2.hndle[style*="color: #d63638"] .dashicons {
     color: #d63638;
 }
-.wpprotector-postbox .inside {
+.metzler-webshield-postbox .inside {
     padding: 24px;
     margin: 0;
 }
@@ -255,27 +255,27 @@ tr.wpprotector-row-resolved button { display: none !important; }
     display: none !important;
 }
 /* Form tables inside settings */
-.wpprotector-settings-table th {
+.metzler-webshield-settings-table th {
     font-weight: 600;
     padding-top: 15px;
     color: #1d2327;
 }
-.wpprotector-settings-table td {
+.metzler-webshield-settings-table td {
     padding: 15px 10px;
 }
-.wpprotector-settings-table label {
+.metzler-webshield-settings-table label {
     font-size: 14px;
     display: inline-block;
     margin-bottom: 6px;
 }
-.wpprotector-settings-table .description {
+.metzler-webshield-settings-table .description {
     font-size: 13px;
     color: #646970;
     line-height: 1.5;
     margin-top: 4px;
 }
 
-.wpprotector-stat-highlight {
+.metzler-webshield-stat-highlight {
     margin-top: 8px;
     font-size: 13px;
     font-weight: 600;
@@ -285,25 +285,25 @@ tr.wpprotector-row-resolved button { display: none !important; }
     background: #f0f0f1;
     color: #3c434a;
 }
-.wpprotector-stat-highlight.waf-active {
+.metzler-webshield-stat-highlight.waf-active {
     background: #f0f9f1;
     color: #00a32a;
     border: 1px solid #c3e5c9;
 }
-.wpprotector-stat-highlight.waf-inactive {
+.metzler-webshield-stat-highlight.waf-inactive {
     background: #fcf0f1;
     color: #d63638;
     border: 1px solid #f6c5c7;
 }
 
-.wpprotector-submit-area {
+.metzler-webshield-submit-area {
     margin-top: 30px !important;
     padding-top: 20px !important;
     border-top: 1px solid #f0f0f1;
     display: flex;
     align-items: center;
 }
-.wpprotector-action-feedback {
+.metzler-webshield-action-feedback {
     margin-left: 15px;
     font-weight: 600;
     font-size: 14px;
@@ -311,24 +311,24 @@ tr.wpprotector-row-resolved button { display: none !important; }
 
 /* Mobile Compatibility */
 @media screen and (max-width: 782px) {
-    .wpprotector-hero-inner {
+    .metzler-webshield-hero-inner {
         flex-direction: column;
         text-align: center;
         gap: 15px;
     }
-    .wpprotector-stats-bar {
+    .metzler-webshield-stats-bar {
         flex-direction: column;
         gap: 10px;
     }
     .stat-item {
         justify-content: center;
     }
-    .wpprotector-settings-table th,
-    .wpprotector-settings-table td {
+    .metzler-webshield-settings-table th,
+    .metzler-webshield-settings-table td {
         display: block;
         width: 100%;
     }
-    .wpprotector-settings-table th {
+    .metzler-webshield-settings-table th {
         padding-bottom: 0;
     }
     .scan-feedback {
@@ -336,18 +336,18 @@ tr.wpprotector-row-resolved button { display: none !important; }
         align-items: flex-start;
         gap: 10px;
     }
-    .wpprotector-nav-tabs .nav-tab {
+    .metzler-webshield-nav-tabs .nav-tab {
         display: block;
         margin-right: 0;
         margin-bottom: 5px;
         text-align: center;
     }
-    .wpprotector-submit-area {
+    .metzler-webshield-submit-area {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    .wpprotector-action-feedback {
+    .metzler-webshield-action-feedback {
         margin-left: 0;
     }
 }

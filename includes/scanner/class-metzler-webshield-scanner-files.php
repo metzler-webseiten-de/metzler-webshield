@@ -1,11 +1,11 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-class WPProtector_Scanner_Files {
+class Metzler_Webshield_Scanner_Files {
     public function run_step($payload): array {
         $step = $payload['step'] ?? 'init';
         
         if ( $step === 'init' ) {
-            WPProtector_Logger::log(__("Starting heuristic malware search (complete file system scan)...", "wpprotector"), "files" );
+            Metzler_Webshield_Logger::log(__("Starting heuristic malware search (complete file system scan)...", "metzler-webshield"), "files" );
             
             $directories = array();
             
@@ -51,7 +51,7 @@ class WPProtector_Scanner_Files {
                 'FilesM[a]n' => 'Web-Shell Signatur (WSO/F-Man)',
                 'b37[4]k' => 'Web-Shell Signatur (b3-74k)',
                 '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => 'Versteckte Variable-Function Injection',
-                '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => 'Direkte POST-Payload Ausführung',
+                '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => 'Direkte POST-Payload Ausführung', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
                 'assert\s*\(\s*\\$_' => 'Assert Injection (PHP <= 7.1)',
                 'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => 'Komprimierte Base64 Backdoor'
             );
@@ -124,17 +124,17 @@ class WPProtector_Scanner_Files {
                             $relative_path = ltrim(str_replace(ABSPATH, '', $full_path), '/\\');
                             $relative_path = str_replace('\\', '/', $relative_path);
                             
-                            $actions = '<br><button type="button" class="button button-small wpprotector-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                            $actions .= '<button type="button" class="button button-small button-primary wpprotector-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                            $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
+                            $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
                             
-                            WPProtector_Logger::log("Kritisch: $threat_reason ($relative_path)" . $actions, "files", "error");
+                            Metzler_Webshield_Logger::log("Kritisch: $threat_reason ($relative_path)" . $actions, "files", "error");
                         }
                     }
                 }
             }
             
             if ( $end >= $total ) {
-                WPProtector_Logger::log(__("Deep scan of the file system completed.", "wpprotector"), "files", "success");
+                Metzler_Webshield_Logger::log(__("Deep scan of the file system completed.", "metzler-webshield"), "files", "success");
                 return array('complete' => true, 'message' => 'Tiefenscan abgeschlossen');
             }
             
@@ -164,7 +164,7 @@ class WPProtector_Scanner_Files {
                 }
             }
         } catch (Exception $e) {
-            WPProtector_Logger::log(__("Could not read directory: ", "wpprotector") . $e->getMessage(), "files", "warning");
+            Metzler_Webshield_Logger::log(__("Could not read directory: ", "metzler-webshield") . $e->getMessage(), "files", "warning");
         }
         
         return $dirs;

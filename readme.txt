@@ -1,4 +1,4 @@
-=== WPProtector ===
+=== Metzler Webshield ===
 Contributors: metzler-webseiten
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
@@ -12,7 +12,7 @@ A lightning-fast, highly optimized WordPress AntiVirus & Firewall (WAF) solution
 
 == Description ==
 
-WPProtector is an enterprise-grade, yet extremely lightweight security solution for WordPress. Unlike bloated security plugins that slow down your website and overload your database, WPProtector utilizes a high-speed MU-Plugin (Must-Use) architecture. 
+Metzler_Webshield is an enterprise-grade, yet extremely lightweight security solution for WordPress. Unlike bloated security plugins that slow down your website and overload your database, Metzler_Webshield utilizes a high-speed MU-Plugin (Must-Use) architecture. 
 
 It intercepts attacks milliseconds before WordPress even loads, ensuring zero performance impact on your TTFB (Time to First Byte).
 
@@ -28,19 +28,19 @@ It intercepts attacks milliseconds before WordPress even loads, ensuring zero pe
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/wpprotector` directory, or install the plugin through the WordPress plugins screen directly.
+1. Upload the plugin files to the `/wp-content/plugins/metzler-webshield` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Navigate to the new 'WPProtector' menu in your WordPress admin dashboard.
+3. Navigate to the new 'Metzler_Webshield' menu in your WordPress admin dashboard.
 4. Enter your email to request a free license key and activate the real-time protection.
 5. Head to the settings tab to perform your initial system scan.
 
 == Frequently Asked Questions ==
 
 = Does this slow down my website? =
-No. WPProtector is designed for maximum performance. The WAF runs as an MU-Plugin, meaning it executes before the WordPress database is even queried. It adds less than 1ms to your page load time.
+No. Metzler_Webshield is designed for maximum performance. The WAF runs as an MU-Plugin, meaning it executes before the WordPress database is even queried. It adds less than 1ms to your page load time.
 
 = Are my firewall rules updated automatically? =
 Yes. The plugin syncs the latest threat definitions from our Threat Intelligence API automatically in the background.
 
 = Does it conflict with caching plugins? =
-No. Since WPProtector runs before caching mechanisms (like WP Rocket or W3 Total Cache) are triggered, it blocks bad requests before they hit your cache.
+No. Since Metzler_Webshield runs before caching mechanisms (like WP Rocket or W3 Total Cache) are triggered, it blocks bad requests before they hit your cache.

@@ -1,6 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-class WPProtector_Scanner_Core {
+class Metzler_Webshield_Scanner_Core {
     public function run_step($payload): array {
         $step = $payload['step'] ?? 'init';
         
@@ -8,13 +8,13 @@ class WPProtector_Scanner_Core {
             global $wp_version;
             $locale = get_locale();
             
-            WPProtector_Logger::log("Lade Core-Checksums für WordPress $wp_version ($locale) von WordPress.org...", "core" );
+            Metzler_Webshield_Logger::log("Lade Core-Checksums für WordPress $wp_version ($locale) von WordPress.org...", "core" );
             
             $url = "https://api.wordpress.org/core/checksums/1.0/?version=$wp_version&locale=$locale";
             $response = wp_remote_get( $url );
             
             if ( is_wp_error( $response ) ) {
-                WPProtector_Logger::log(__("Error retrieving Core checksums.", "wpprotector"), "core", "error");
+                Metzler_Webshield_Logger::log(__("Error retrieving Core checksums.", "metzler-webshield"), "core", "error");
                 return array('complete' => true);
             }
             
@@ -24,7 +24,7 @@ class WPProtector_Scanner_Core {
             // wp.org returns an object where checksums might be deeply nested or simple, depending on version, 
             // but for 1.0 it is usually $data['checksums']
             if ( ! isset($data['checksums']) || ! is_array($data['checksums']) ) {
-                WPProtector_Logger::log(__("Invalid response from WordPress.org API.", "wpprotector"), "core", "error");
+                Metzler_Webshield_Logger::log(__("Invalid response from WordPress.org API.", "metzler-webshield"), "core", "error");
                 return array('complete' => true);
             }
             
@@ -37,7 +37,7 @@ class WPProtector_Scanner_Core {
             });
             $files = array_values($files);
             
-            set_transient( 'wpprotector_core_checksums', $checksums, HOUR_IN_SECONDS );
+            set_transient( 'metzler_webshield_core_checksums', $checksums, HOUR_IN_SECONDS );
             
             return array(
                 'complete' => false,
@@ -51,9 +51,9 @@ class WPProtector_Scanner_Core {
             $index = isset($payload['index']) ? intval($payload['index']) : 0;
             $batch_size = 200; 
             
-            $checksums = get_transient( 'wpprotector_core_checksums' );
+            $checksums = get_transient( 'metzler_webshield_core_checksums' );
             if ( ! $checksums ) {
-                WPProtector_Logger::log(__("Error: Checksums lost in cache.", "wpprotector"), "core", "error");
+                Metzler_Webshield_Logger::log(__("Error: Checksums lost in cache.", "metzler-webshield"), "core", "error");
                 return array('complete' => true);
             }
             
@@ -81,14 +81,14 @@ class WPProtector_Scanner_Core {
                     }
                     
                     if ( ! $is_valid ) {
-                        WPProtector_Logger::log(__("Core file modified: ", "wpprotector") . esc_html($file), "core", "error");
+                        Metzler_Webshield_Logger::log(__("Core file modified: ", "metzler-webshield") . esc_html($file), "core", "error");
                     }
                 }
             }
             
             if ( $end >= $total ) {
-                WPProtector_Logger::log(__("WordPress Core file check completed.", "wpprotector"), "core", "success");
-                delete_transient( 'wpprotector_core_checksums' );
+                Metzler_Webshield_Logger::log(__("WordPress Core file check completed.", "metzler-webshield"), "core", "success");
+                delete_transient( 'metzler_webshield_core_checksums' );
                 return array('complete' => true, 'message' => 'Core Scan abgeschlossen');
             }
             

@@ -1,22 +1,22 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-class WPProtector_Scanner_FIM {
+class Metzler_Webshield_Scanner_FIM {
     public function run_step($payload): array {
         $step = $payload['step'] ?? 'init';
         
         if ( $step === 'init' ) {
-            $last_baseline = get_option('wpprotector_fim_last_baseline');
+            $last_baseline = get_option('metzler_webshield_fim_last_baseline');
             if ( ! $last_baseline ) {
-                WPProtector_Logger::log(__("Initial system baseline is being generated in the background...", "wpprotector"), "system" );
-                $fim = new WPProtector_FIM();
+                Metzler_Webshield_Logger::log(__("Initial system baseline is being generated in the background...", "metzler-webshield"), "system" );
+                $fim = new Metzler_Webshield_FIM();
                 $fim->build_baseline();
-                WPProtector_Logger::log(__("System baseline set successfully. All future file changes will now be monitored.", "wpprotector"), "system", "success");
+                Metzler_Webshield_Logger::log(__("System baseline set successfully. All future file changes will now be monitored.", "metzler-webshield"), "system", "success");
                 return array('complete' => true); // No need to scan right after building it
             }
 
-            WPProtector_Logger::log(__("Starting File Integrity Monitoring across wp-content...", "wpprotector"), "system" );
+            Metzler_Webshield_Logger::log(__("Starting File Integrity Monitoring across wp-content...", "metzler-webshield"), "system" );
             
-            new WPProtector_FIM();
+            new Metzler_Webshield_FIM();
 
             return array(
                 'complete' => false,
@@ -27,7 +27,7 @@ class WPProtector_Scanner_FIM {
         
         if ( $step === 'process' ) {
             global $wpdb;
-            $table_name = $wpdb->prefix . 'wpprotector_fim';
+            $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
             
             $wp_content = WP_CONTENT_DIR;
             $files = $this->get_all_php_files($wp_content);
@@ -50,23 +50,23 @@ class WPProtector_Scanner_FIM {
                 
                 $actual_hash = md5_file($file);
                 
-                $baseline_row = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM $table_name WHERE file_path = %s", $relative_path));
+                $baseline_row = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM $table_name WHERE file_path = %s", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
                 
                 if ( ! $baseline_row ) {
                     // File is new!
-                    $actions = '<br><button type="button" class="button button-small wpprotector-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                    $actions .= '<button type="button" class="button button-small button-primary wpprotector-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                    WPProtector_Logger::log(__("FIM Alert: New, unknown file found -> ", "wpprotector") . esc_html($relative_path) . $actions, "system", "error");
+                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
+                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                    Metzler_Webshield_Logger::log(__("FIM Alert: New, unknown file found -> ", "metzler-webshield") . esc_html($relative_path) . $actions, "system", "error");
                 } else if ( $baseline_row->file_hash !== $actual_hash ) {
                     // File is modified!
-                    $actions = '<br><button type="button" class="button button-small wpprotector-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                    $actions .= '<button type="button" class="button button-small button-primary wpprotector-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                    WPProtector_Logger::log(__("FIM Alert: File modified after snapshot -> ", "wpprotector") . esc_html($relative_path) . $actions, "system", "error");
+                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
+                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                    Metzler_Webshield_Logger::log(__("FIM Alert: File modified after snapshot -> ", "metzler-webshield") . esc_html($relative_path) . $actions, "system", "error");
                 }
             }
             
             if ( $end >= $total ) {
-                WPProtector_Logger::log("File Integrity Monitoring abgeschlossen. (Geprüft: $total Dateien)", "system", "success");
+                Metzler_Webshield_Logger::log("File Integrity Monitoring abgeschlossen. (Geprüft: $total Dateien)", "system", "success");
                 return array('complete' => true, 'message' => 'FIM Scan abgeschlossen');
             }
             

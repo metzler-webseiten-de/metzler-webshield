@@ -1,11 +1,11 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-class WPProtector_Scanner_Updates {
+class Metzler_Webshield_Scanner_Updates {
     public function run_step($payload): array {
         $step = $payload['step'] ?? 'init';
         
         if ( $step === 'init' ) {
-            WPProtector_Logger::log(__("Checking for available software updates...", "wpprotector"), "updates" );
+            Metzler_Webshield_Logger::log(__("Checking for available software updates...", "metzler-webshield"), "updates" );
             
             return array(
                 'complete' => false,
@@ -22,15 +22,15 @@ class WPProtector_Scanner_Updates {
                 foreach ( $core_updates->updates as $update ) {
                     if ( $update->response === 'upgrade' ) {
                         $has_core_update = true;
-                        $button = '<button class="button button-small wpprotector-update-btn" data-update-type="core" data-update-item="core">Core Update ausführen</button>';
-                        WPProtector_Logger::log(__("Outdated WordPress version. Recommended: Update to ", "wpprotector") . esc_html($update->version) . " " . $button, "updates", "warning");
+                        $button = '<button class="button button-small metzler-webshield-update-btn" data-update-type="core" data-update-item="core">Core Update ausführen</button>';
+                        Metzler_Webshield_Logger::log(__("Outdated WordPress version. Recommended: Update to ", "metzler-webshield") . esc_html($update->version) . " " . $button, "updates", "warning");
                         break;
                     }
                 }
             }
             
             if ( ! $has_core_update ) {
-                WPProtector_Logger::log(__("WordPress Core is up to date.", "wpprotector"), "updates", "success");
+                Metzler_Webshield_Logger::log(__("WordPress Core is up to date.", "metzler-webshield"), "updates", "success");
             }
             
             return array(
@@ -54,13 +54,13 @@ class WPProtector_Scanner_Updates {
                     $all_plugins = get_plugins();
                     $plugin_name = isset($all_plugins[$plugin_file]) ? $all_plugins[$plugin_file]['Name'] : $plugin_file;
                     
-                    $button = '<button class="button button-small wpprotector-update-btn" data-update-type="plugin" data-update-item="' . esc_attr($plugin_file) . '">Plugin aktualisieren</button>';
-                    WPProtector_Logger::log(__("Outdated plugin: ", "wpprotector") . esc_html($plugin_name) . " (Neue Version verfügbar) " . $button, "updates", "warning");
+                    $button = '<button class="button button-small metzler-webshield-update-btn" data-update-type="plugin" data-update-item="' . esc_attr($plugin_file) . '">Plugin aktualisieren</button>';
+                    Metzler_Webshield_Logger::log(__("Outdated plugin: ", "metzler-webshield") . esc_html($plugin_name) . " (Neue Version verfügbar) " . $button, "updates", "warning");
                 }
             }
             
             if ( ! $has_plugin_updates ) {
-                WPProtector_Logger::log(__("All plugins are up to date.", "wpprotector"), "updates", "success");
+                Metzler_Webshield_Logger::log(__("All plugins are up to date.", "metzler-webshield"), "updates", "success");
             }
             
             return array('complete' => true, 'message' => 'Update-Prüfung abgeschlossen');

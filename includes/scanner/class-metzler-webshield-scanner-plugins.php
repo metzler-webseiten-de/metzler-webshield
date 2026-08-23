@@ -1,11 +1,11 @@
 <?php
-class WPProtector_Scanner_Plugins {
+class Metzler_Webshield_Scanner_Plugins {
     
     public function run_step($payload): array {
         $step = $payload['step'] ?? 'init';
         
         if ( $step === 'init' ) {
-            WPProtector_Logger::log(__("Collecting list of installed plugins...", "wpprotector"), "plugins" );
+            Metzler_Webshield_Logger::log(__("Collecting list of installed plugins...", "metzler-webshield"), "plugins" );
             
             if ( ! function_exists( 'get_plugins' ) ) {
                 require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -49,7 +49,7 @@ class WPProtector_Scanner_Plugins {
                 $response = wp_remote_get( "https://downloads.wordpress.org/plugin-checksums/{$slug}/{$version}.json", array('timeout' => 15) );
                 
                 if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-                    WPProtector_Logger::log("Keine wp.org Signatur für Plugin verfügbar: {$name}", "plugins" );
+                    Metzler_Webshield_Logger::log("Keine wp.org Signatur für Plugin verfügbar: {$name}", "plugins" );
                     continue;
                 }
                 
@@ -79,12 +79,12 @@ class WPProtector_Scanner_Plugins {
                                 $relative_path = ltrim(str_replace(ABSPATH, '', $local_file), '/\\');
                                 $relative_path = str_replace('\\', '/', $relative_path);
                                 
-                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}wpprotector_fim WHERE file_path = %s", $relative_path));
+                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
                                 if ( ! $baseline || $baseline->file_hash !== $actual_hash ) {
                                     $modifications_found++;
-                                    $actions = '<br><button type="button" class="button button-small wpprotector-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                                    $actions .= '<button type="button" class="button button-small button-primary wpprotector-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                                    WPProtector_Logger::log("Plugin-Datei modifiziert: {$name} -> " . esc_html($file_name) . $actions, "plugins", "error");
+                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
+                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                                    Metzler_Webshield_Logger::log("Plugin-Datei modifiziert: {$name} -> " . esc_html($file_name) . $actions, "plugins", "error");
                                 }
                             }
                         }
@@ -103,11 +103,11 @@ class WPProtector_Scanner_Plugins {
                                 $full_relative = ltrim(str_replace(ABSPATH, '', $local_file), '/\\');
                                 $full_relative = str_replace('\\', '/', $full_relative);
                                 
-                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}wpprotector_fim WHERE file_path = %s", $full_relative));
+                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $full_relative)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
                                 if ( ! $baseline || $baseline->file_hash !== md5_file($local_file) ) {
-                                    $actions = '<br><button type="button" class="button button-small wpprotector-q-safe" data-path="'.esc_attr($full_relative).'">Als sicher markieren</button> ';
-                                    $actions .= '<button type="button" class="button button-small button-primary wpprotector-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                                    WPProtector_Logger::log("Kritisch: Unbekannte Datei im Plugin (Rogue File): {$name} -> " . esc_html($relative_path) . $actions, "plugins", "error");
+                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">Als sicher markieren</button> ';
+                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                                    Metzler_Webshield_Logger::log("Kritisch: Unbekannte Datei im Plugin (Rogue File): {$name} -> " . esc_html($relative_path) . $actions, "plugins", "error");
                                 }
                             }
                         }
@@ -116,7 +116,7 @@ class WPProtector_Scanner_Plugins {
             }
             
             if ( $end >= $total ) {
-                WPProtector_Logger::log(__("Plugin signature check completed.", "wpprotector"), "plugins", "success");
+                Metzler_Webshield_Logger::log(__("Plugin signature check completed.", "metzler-webshield"), "plugins", "success");
                 return array('complete' => true, 'message' => 'Plugin Scan abgeschlossen');
             }
             

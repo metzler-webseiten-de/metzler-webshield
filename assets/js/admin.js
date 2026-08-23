@@ -18,7 +18,7 @@ jQuery(document).ready(function($) {
     ];
 
     function setHeroStatus(status, title, subtitle) {
-        const hero = $('#wpprotector-hero');
+        const hero = $('#metzler-webshield-hero');
         const icon = hero.find('.hero-icon .dashicons');
         
         hero.removeClass('status-safe status-warning status-scanning status-loading');
@@ -64,9 +64,9 @@ jQuery(document).ready(function($) {
     }
 
     function fetchLogs(callback) {
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_get_logs'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_get_logs'
         }, function(response) {
             if (response.success && response.data.logs) {
                 renderLogs(response.data.logs);
@@ -93,9 +93,9 @@ jQuery(document).ready(function($) {
                     if (dashboardThreats.length > 5) {
                         $('#active-threats-list').append('<li><em>... und ' + (dashboardThreats.length - 5) + ' weitere (siehe Protokoll).</em></li>');
                     }
-                    $('#wpprotector-active-threats').show();
+                    $('#metzler-webshield-active-threats').show();
                 } else {
-                    $('#wpprotector-active-threats').hide();
+                    $('#metzler-webshield-active-threats').hide();
                 }
                 
                 if (scanInProgress && issuesFound > 0) {
@@ -116,7 +116,7 @@ jQuery(document).ready(function($) {
     }
 
     function renderLogs(logs) {
-        const tbody = $('#wpprotector-log-body');
+        const tbody = $('#metzler-webshield-log-body');
         tbody.empty();
         
         if (logs.length === 0) {
@@ -126,17 +126,17 @@ jQuery(document).ready(function($) {
 
         logs.forEach(log => {
             const time = new Date(log.time).toLocaleTimeString();
-            const trClass = 'wpprotector-row-' + log.severity;
+            const trClass = 'metzler-webshield-row-' + log.severity;
             const tr = `<tr class="${trClass}">
                 <td>${time}</td>
-                <td><span class="wpprotector-log-module">${log.type}</span></td>
-                <td class="wpprotector-log-severity-${log.severity}">${log.message}</td>
+                <td><span class="metzler-webshield-log-module">${log.type}</span></td>
+                <td class="metzler-webshield-log-severity-${log.severity}">${log.message}</td>
             </tr>`;
             tbody.append(tr);
         });
     }
 
-    $(document).on('click', '.wpprotector-update-btn', function(e) {
+    $(document).on('click', '.metzler-webshield-update-btn', function(e) {
         e.preventDefault();
         const btn = $(this);
         const updateType = btn.data('update-type');
@@ -144,9 +144,9 @@ jQuery(document).ready(function($) {
         
         btn.prop('disabled', true).text('Aktualisiere...');
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_do_update',
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_do_update',
             update_type: updateType,
             update_item: updateItem
         }, function(response) {
@@ -164,9 +164,9 @@ jQuery(document).ready(function($) {
     });
 
     function processQueue() {
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_process_queue'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_process_queue'
         }, function(response) {
             if (response.success) {
                 if (response.data.status === 'processing') {
@@ -222,7 +222,7 @@ jQuery(document).ready(function($) {
         if(scanInProgress) return;
         scanInProgress = true;
         
-        $('#wpprotector-scan-controls').hide();
+        $('#metzler-webshield-scan-controls').hide();
         $('#scan-progress-wrapper').show();
         $('#btn-cancel-scan').show();
         $('#scan-progress-fill').css('width', '5%');
@@ -232,9 +232,9 @@ jQuery(document).ready(function($) {
         
         setHeroStatus('scanning', 'Smart Scan läuft...', 'Dateien und Datenbanken werden analysiert...');
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_start_scan'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_start_scan'
         }, function(response) {
             if(response.success) {
                 scanStartTime = Date.now();
@@ -250,11 +250,11 @@ jQuery(document).ready(function($) {
         scanInProgress = false;
         $(this).hide();
         $('#scan-progress-wrapper').hide();
-        $('#wpprotector-scan-controls').show();
+        $('#metzler-webshield-scan-controls').show();
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_cancel_scan'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_cancel_scan'
         }, function(response) {
             setHeroStatus('warning', 'Scan abgebrochen', 'Der Smart Scan wurde manuell abgebrochen.');
             fetchLogs();
@@ -278,7 +278,7 @@ jQuery(document).ready(function($) {
         fetchLogs(function() {
             setTimeout(() => {
                 $('#scan-progress-wrapper').slideUp();
-                $('#wpprotector-scan-controls').slideDown();
+                $('#metzler-webshield-scan-controls').slideDown();
                 
                 if (issuesFound > 0) {
                     setHeroStatus('warning', 'Sicherheitsrisiken gefunden!', 'Es wurden Probleme entdeckt. Bitte überprüfe das Protokoll unten.');
@@ -293,9 +293,9 @@ jQuery(document).ready(function($) {
     
     $('#btn-clear-logs').on('click', function() {
         if(confirm('Möchtest du das gesamte Sicherheitsprotokoll wirklich leeren?')) {
-            $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_clear_logs'
+            $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_clear_logs'
             }, function(response) {
                 if(response.success) {
                     fetchLogs(function() {
@@ -310,9 +310,9 @@ jQuery(document).ready(function($) {
     $('#btn-create-baseline').on('click', function() {
         const btn = $(this);
         btn.prop('disabled', true).text('Erstelle Baseline...');
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_create_baseline'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_create_baseline'
         }, function(response) {
             if(response.success) {
                 alert(response.data.message);
@@ -323,81 +323,81 @@ jQuery(document).ready(function($) {
     });
 
     // --- UX Buttons (Safe & Quarantine) ---
-    $(document).on('click', '.wpprotector-q-safe', function(e) {
+    $(document).on('click', '.metzler-webshield-q-safe', function(e) {
         e.preventDefault();
         const btn = $(this);
         const path = btn.data('path');
         btn.text('Speichere...');
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_accept_fim',
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_accept_fim',
             path: path
         }, function(response) {
             if(response.success) {
-                btn.closest('td').append('<span style="color:green;"> ' + wpprotector_ajax.i18n.marked_safe + '</span>');
-                btn.siblings('.wpprotector-q-move').remove();
+                btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.marked_safe + '</span>');
+                btn.siblings('.metzler-webshield-q-move').remove();
                 btn.remove();
                 fetchLogs(); // UI dynamisch aktualisieren
             }
         });
     });
 
-    $(document).on('click', '.wpprotector-q-move', function(e) {
+    $(document).on('click', '.metzler-webshield-q-move', function(e) {
         e.preventDefault();
         const btn = $(this);
         const path = btn.data('path');
-        btn.text(wpprotector_ajax.i18n.moving);
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_quarantine_file',
+        btn.text(metzler_webshield_ajax.i18n.moving);
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_quarantine_file',
             path: path
         }, function(response) {
             if(response.success) {
-                btn.closest('td').append('<span style="color:green;"> ' + wpprotector_ajax.i18n.moved_quarantine + '</span>');
-                btn.siblings('.wpprotector-q-safe').remove();
+                btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.moved_quarantine + '</span>');
+                btn.siblings('.metzler-webshield-q-safe').remove();
                 btn.remove();
                 loadQuarantine();
                 fetchLogs(); // UI dynamisch aktualisieren
             } else {
-                alert(response.data.message || wpprotector_ajax.i18n.move_error);
-                btn.text(wpprotector_ajax.i18n.move_to_quarantine);
+                alert(response.data.message || metzler_webshield_ajax.i18n.move_error);
+                btn.text(metzler_webshield_ajax.i18n.move_to_quarantine);
             }
         });
     });
 
     // --- Tab Switching ---
-    $('.wpprotector-tab-link').on('click', function(e) {
+    $('.metzler-webshield-tab-link').on('click', function(e) {
         e.preventDefault();
         const targetTab = $(this).data('tab');
 
-        if (!wpprotector_ajax.is_licensed && targetTab !== 'tab-license') {
-            alert(wpprotector_ajax.i18n.please_license);
+        if (!metzler_webshield_ajax.is_licensed && targetTab !== 'tab-license') {
+            alert(metzler_webshield_ajax.i18n.please_license);
             // Force switch to license tab if they try to click something else
-            $('.wpprotector-tab-link').removeClass('nav-tab-active');
-            $('.wpprotector-tab-link[data-tab="tab-license"]').addClass('nav-tab-active');
-            $('.wpprotector-tab-content').hide();
+            $('.metzler-webshield-tab-link').removeClass('nav-tab-active');
+            $('.metzler-webshield-tab-link[data-tab="tab-license"]').addClass('nav-tab-active');
+            $('.metzler-webshield-tab-content').hide();
             $('#tab-license').show();
             return;
         }
 
-        $('.wpprotector-tab-link').removeClass('nav-tab-active');
+        $('.metzler-webshield-tab-link').removeClass('nav-tab-active');
         $(this).addClass('nav-tab-active');
         
-        $('.wpprotector-tab-content').hide();
+        $('.metzler-webshield-tab-content').hide();
         $('#' + targetTab).show();
     });
 
     // --- Quarantine ---
     function loadQuarantine() {
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_get_quarantine'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_get_quarantine'
         }, function(response) {
             if(response.success && response.data.files) {
-                const tbody = $('#wpprotector-quarantine-body');
+                const tbody = $('#metzler-webshield-quarantine-body');
                 tbody.empty();
                 if(response.data.files.length === 0) {
-                    tbody.append('<tr><td colspan="3">' + wpprotector_ajax.i18n.quarantine_empty + '</td></tr>');
+                    tbody.append('<tr><td colspan="3">' + metzler_webshield_ajax.i18n.quarantine_empty + '</td></tr>');
                     return;
                 }
                 
@@ -406,8 +406,8 @@ jQuery(document).ready(function($) {
                     html += '<td>' + f.time + '</td>';
                     html += '<td>' + f.original_path + '</td>';
                     html += '<td>';
-                    html += '<button type="button" class="button button-small wpprotector-q-restore" data-id="' + f.id + '">' + wpprotector_ajax.i18n.restore + '</button> ';
-                    html += '<button type="button" class="button button-small wpprotector-q-delete" data-id="' + f.id + '" style="color:#d63638;">' + wpprotector_ajax.i18n.delete_permanent + '</button>';
+                    html += '<button type="button" class="button button-small metzler-webshield-q-restore" data-id="' + f.id + '">' + metzler_webshield_ajax.i18n.restore + '</button> ';
+                    html += '<button type="button" class="button button-small metzler-webshield-q-delete" data-id="' + f.id + '" style="color:#d63638;">' + metzler_webshield_ajax.i18n.delete_permanent + '</button>';
                     html += '</td></tr>';
                     tbody.append(html);
                 });
@@ -415,25 +415,25 @@ jQuery(document).ready(function($) {
         });
     }
 
-    $(document).on('click', '.wpprotector-q-restore', function() {
+    $(document).on('click', '.metzler-webshield-q-restore', function() {
         const id = $(this).data('id');
-        $(this).text(wpprotector_ajax.i18n.restoring);
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_quarantine_restore', id: id }, function(res) {
+        $(this).text(metzler_webshield_ajax.i18n.restoring);
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_quarantine_restore', id: id }, function(res) {
             if(res.success) {
                 loadQuarantine();
-                alert(wpprotector_ajax.i18n.file_restored);
+                alert(metzler_webshield_ajax.i18n.file_restored);
             }
         });
     });
 
-    $(document).on('click', '.wpprotector-q-delete', function() {
-        if(!confirm(wpprotector_ajax.i18n.confirm_delete)) return;
+    $(document).on('click', '.metzler-webshield-q-delete', function() {
+        if(!confirm(metzler_webshield_ajax.i18n.confirm_delete)) return;
         const id = $(this).data('id');
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_quarantine_delete', id: id }, function(res) {
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_quarantine_delete', id: id }, function(res) {
             if(res.success) loadQuarantine();
         });
     });
@@ -441,19 +441,19 @@ jQuery(document).ready(function($) {
     // --- Settings ---
     $('#btn-save-settings').on('click', function() {
         const btn = $(this);
-        const fimEnabled = $('#wpprotector-setting-fim').is(':checked') ? '1' : '0';
-        const coreEnabled = $('#wpprotector-setting-core').is(':checked') ? '1' : '0';
-        const filesEnabled = $('#wpprotector-setting-files').is(':checked') ? '1' : '0';
-        const updatesEnabled = $('#wpprotector-setting-updates').is(':checked') ? '1' : '0';
-        const pluginsEnabled = $('#wpprotector-setting-plugins').is(':checked') ? '1' : '0';
-        const wafEnabled = $('#wpprotector-setting-waf').is(':checked') ? '1' : '0';
-        const xmlrpcDisabled = $('#wpprotector-setting-xmlrpc').is(':checked') ? '1' : '0';
-        const telemetryEnabled = $('#wpprotector-setting-telemetry').is(':checked') ? '1' : '0';
+        const fimEnabled = $('#metzler-webshield-setting-fim').is(':checked') ? '1' : '0';
+        const coreEnabled = $('#metzler-webshield-setting-core').is(':checked') ? '1' : '0';
+        const filesEnabled = $('#metzler-webshield-setting-files').is(':checked') ? '1' : '0';
+        const updatesEnabled = $('#metzler-webshield-setting-updates').is(':checked') ? '1' : '0';
+        const pluginsEnabled = $('#metzler-webshield-setting-plugins').is(':checked') ? '1' : '0';
+        const wafEnabled = $('#metzler-webshield-setting-waf').is(':checked') ? '1' : '0';
+        const xmlrpcDisabled = $('#metzler-webshield-setting-xmlrpc').is(':checked') ? '1' : '0';
+        const telemetryEnabled = $('#metzler-webshield-setting-telemetry').is(':checked') ? '1' : '0';
         btn.prop('disabled', true);
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_save_settings',
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_save_settings',
             enable_fim: fimEnabled,
             enable_core: coreEnabled,
             enable_files: filesEnabled,
@@ -476,18 +476,18 @@ jQuery(document).ready(function($) {
         const btn = $(this);
         const feedback = $('#fim-rebuild-feedback');
         btn.prop('disabled', true);
-        feedback.text(wpprotector_ajax.i18n.reading_files);
+        feedback.text(metzler_webshield_ajax.i18n.reading_files);
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_create_baseline'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_create_baseline'
         }, function(res) {
             btn.prop('disabled', false);
             if(res.success) {
-                feedback.css('color', 'green').text(wpprotector_ajax.i18n.success + res.data.message);
+                feedback.css('color', 'green').text(metzler_webshield_ajax.i18n.success + res.data.message);
                 setTimeout(() => feedback.text(''), 4000);
             } else {
-                feedback.css('color', 'red').text(wpprotector_ajax.i18n.read_error);
+                feedback.css('color', 'red').text(metzler_webshield_ajax.i18n.read_error);
             }
         });
     });
@@ -495,48 +495,48 @@ jQuery(document).ready(function($) {
     // --- Licensing ---
     $('#btn-request-license').on('click', function() {
         const btn = $(this);
-        const email = $('#wpprotector-license-email').val();
+        const email = $('#metzler-webshield-license-email').val();
         const feedback = $('#license-request-feedback');
 
         if (!email) {
-            feedback.css('color', 'red').text(wpprotector_ajax.i18n.enter_email);
+            feedback.css('color', 'red').text(metzler_webshield_ajax.i18n.enter_email);
             return;
         }
 
-        btn.prop('disabled', true).text(wpprotector_ajax.i18n.requesting);
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.requesting);
         feedback.text('');
 
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_request_license',
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_request_license',
             email: email
         }, function(res) {
-            btn.prop('disabled', false).text(wpprotector_ajax.i18n.request_key);
+            btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.request_key);
             if (res.success) {
                 feedback.css('color', 'green').text(res.data.message);
             } else {
-                feedback.css('color', 'red').text(res.data.message || wpprotector_ajax.i18n.request_error);
+                feedback.css('color', 'red').text(res.data.message || metzler_webshield_ajax.i18n.request_error);
             }
         });
     });
 
     $('#btn-verify-license').on('click', function() {
         const btn = $(this);
-        const token = $('#wpprotector-license-token').val();
-        const email = $('#wpprotector-license-email').val();
+        const token = $('#metzler-webshield-license-token').val();
+        const email = $('#metzler-webshield-license-email').val();
         const feedback = $('#license-verify-feedback');
 
         if (!token) {
-            feedback.css('color', 'red').text(wpprotector_ajax.i18n.enter_key);
+            feedback.css('color', 'red').text(metzler_webshield_ajax.i18n.enter_key);
             return;
         }
 
-        btn.prop('disabled', true).text(wpprotector_ajax.i18n.verifying);
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.verifying);
         feedback.text('');
 
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_verify_license',
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_verify_license',
             token: token,
             email: email
         }, function(res) {
@@ -544,8 +544,8 @@ jQuery(document).ready(function($) {
                 feedback.css('color', 'green').text(res.data.message);
                 setTimeout(function(){ location.reload(); }, 1500);
             } else {
-                btn.prop('disabled', false).text(wpprotector_ajax.i18n.verify_license);
-                feedback.css('color', 'red').text(res.data.message || wpprotector_ajax.i18n.invalid_key);
+                btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.verify_license);
+                feedback.css('color', 'red').text(res.data.message || metzler_webshield_ajax.i18n.invalid_key);
             }
         });
     });
@@ -553,28 +553,28 @@ jQuery(document).ready(function($) {
     $('#btn-recheck-license').on('click', function() {
         const btn = $(this);
         const feedback = $('#license-recheck-feedback');
-        btn.prop('disabled', true).text(wpprotector_ajax.i18n.rechecking);
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.rechecking);
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_recheck_license'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_recheck_license'
         }, function(res) {
             if (res.success) {
-                feedback.css('color', 'green').text(wpprotector_ajax.i18n.license_valid);
-                setTimeout(function(){ feedback.text(''); btn.prop('disabled', false).text(wpprotector_ajax.i18n.recheck_now); }, 3000);
+                feedback.css('color', 'green').text(metzler_webshield_ajax.i18n.license_valid);
+                setTimeout(function(){ feedback.text(''); btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.recheck_now); }, 3000);
             } else {
-                alert(wpprotector_ajax.i18n.license_invalid);
+                alert(metzler_webshield_ajax.i18n.license_invalid);
                 location.reload();
             }
         });
     });
 
     $('#btn-remove-license').on('click', function() {
-        if (!confirm(wpprotector_ajax.i18n.confirm_remove)) return;
+        if (!confirm(metzler_webshield_ajax.i18n.confirm_remove)) return;
         
-        $.post(wpprotector_ajax.ajax_url, {
-            _wpnonce: wpprotector_ajax.nonce,
-            action: 'wpprotector_remove_license'
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_remove_license'
         }, function(res) {
             location.reload();
         });

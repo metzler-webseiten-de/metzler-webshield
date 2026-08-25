@@ -1,0 +1,826 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-25T00:15:41+00:00\n"
+"PO-Revision-Date: 2026-08-25T00:15:41+00:00\n"
+"Language: de_DE\n"
+
+#. translators: 1: Plugin name, 2: Vulnerability title
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:73
+#, php-format
+msgid "CRITICAL: Known vulnerability found in plugin %1$s: %2$s"
+msgstr "KRITISCH: Bekannte Schwachstelle in Plugin %1$s gefunden: %2$s"
+
+#. translators: %s: Vulnerability title
+#: includes/scanner/class-metzler-webshield-scanner-core.php:38
+#, php-format
+msgid "CRITICAL: Known Core vulnerability found: %s"
+msgstr "KRITISCH: Bekannte Core-Schwachstelle gefunden: %s"
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:34
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:69
+msgid "Unknown vulnerability"
+msgstr "Unbekannte Schwachstelle"
+
+#. Plugin Name of the plugin
+#: metzler-webshield.php
+msgid "Metzler Webshield"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: metzler-webshield.php
+msgid "https://metzler-webshield.de"
+msgstr ""
+
+#. Description of the plugin
+#: metzler-webshield.php
+msgid "DSGVO-konforme WordPress AntiVirus & Firewall Solution made in Germany."
+msgstr ""
+
+#. Author of the plugin
+#: metzler-webshield.php
+msgid "metzler-webseiten.de"
+msgstr ""
+
+#. Author URI of the plugin
+#: metzler-webshield.php
+msgid "https://metzler-webseiten.de"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:35
+msgid "Please add your license key in the \"License\" tab first to unlock this feature."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:36
+msgid "Requesting..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:37
+#: admin/views/view-dashboard.php:414
+msgid "Request Key"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:38
+msgid "Please enter an email."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:39
+msgid "Please enter a key."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:40
+msgid "Verifying..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:41
+#: admin/views/view-dashboard.php:429
+msgid "Verify License"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:42
+msgid "Checking..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:43
+msgid "License is valid!"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:44
+#: admin/views/view-dashboard.php:395
+msgid "Recheck license now"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:45
+msgid "License is invalid or expired. The plugin will be locked now."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:46
+msgid "Do you really want to remove this license? The firewall and scanner will be deactivated."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:47
+msgid "Marked as safe."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:48
+msgid "Moving..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:49
+msgid "Moved to quarantine."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:50
+msgid "Error moving file."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:51
+msgid "Move to quarantine"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:52
+msgid "The quarantine is empty."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:53
+msgid "Restoring..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:54
+msgid "File was restored."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:55
+msgid "Should this file really be permanently deleted from the server? This cannot be undone."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:56
+#: admin/views/view-dashboard.php:242
+msgid "Restore"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:57
+msgid "Delete permanently"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:58
+msgid "Reading files, please wait..."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:59
+msgid "Success! "
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:60
+msgid "Error reading files."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:61
+msgid "Error during request."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:62
+msgid "Invalid key."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:77
+msgid "Invalid email address."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:91
+#: admin/class-metzler-webshield-admin.php:122
+msgid "API connection error:"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:98
+msgid "License key requested!"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:100
+msgid "Error:"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:100
+msgid "Unknown"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:141
+msgid "License verified!"
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:143
+msgid "Invalid license key."
+msgstr ""
+
+#: admin/class-metzler-webshield-admin.php:188
+msgid "License removed."
+msgstr ""
+
+#: admin/views/view-dashboard.php:28
+msgid "Overview"
+msgstr ""
+
+#: admin/views/view-dashboard.php:29
+msgid "Log"
+msgstr ""
+
+#: admin/views/view-dashboard.php:30
+#: admin/views/view-dashboard.php:213
+msgid "Quarantine"
+msgstr ""
+
+#: admin/views/view-dashboard.php:31
+msgid "Settings"
+msgstr ""
+
+#: admin/views/view-dashboard.php:32
+msgid "License"
+msgstr ""
+
+#: admin/views/view-dashboard.php:44
+msgid "Your website is secure."
+msgstr ""
+
+#: admin/views/view-dashboard.php:44
+msgid "Security risks detected!"
+msgstr ""
+
+#: admin/views/view-dashboard.php:45
+msgid "All background guards are active and up to date."
+msgstr ""
+
+#: admin/views/view-dashboard.php:45
+msgid "Please check the security log."
+msgstr ""
+
+#: admin/views/view-dashboard.php:49
+msgid "Run Smart Scan"
+msgstr ""
+
+#: admin/views/view-dashboard.php:62
+msgid "Initializing scan engine..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:65
+msgid "Checking for known vulnerabilities (Updates)..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:68
+msgid "Analyzing plugins and themes..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:71
+msgid "Comparing WordPress Core with original signatures..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:74
+msgid "Deep scan of the file system..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:77
+msgid "Performing File Integrity Monitoring (FIM)..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:80
+msgid "Checking server configuration and firewall..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:83
+msgid "Scan successfully completed."
+msgstr ""
+
+#: admin/views/view-dashboard.php:89
+msgid "Starting..."
+msgstr ""
+
+#: admin/views/view-dashboard.php:92
+msgid "Cancel Scan"
+msgstr ""
+
+#: admin/views/view-dashboard.php:105
+msgid "Scanned Files"
+msgstr ""
+
+#: admin/views/view-dashboard.php:112
+msgid "Last Smart Scan"
+msgstr ""
+
+#: admin/views/view-dashboard.php:122
+msgid "Active threats found!"
+msgstr ""
+
+#: admin/views/view-dashboard.php:125
+msgid "Your system requires immediate attention. The following issues were detected:"
+msgstr ""
+
+#. translators: %d: number of hidden events
+#: admin/views/view-dashboard.php:139
+#, php-format
+msgid "... and %d more (see log)."
+msgstr ""
+
+#: admin/views/view-dashboard.php:144
+msgid "View details in the log"
+msgstr ""
+
+#: admin/views/view-dashboard.php:158
+msgid "System Information"
+msgstr ""
+
+#: admin/views/view-dashboard.php:177
+msgid "Detailed Security Log"
+msgstr ""
+
+#: admin/views/view-dashboard.php:182
+msgid "Refresh"
+msgstr ""
+
+#: admin/views/view-dashboard.php:183
+msgid "Clear Log"
+msgstr ""
+
+#: admin/views/view-dashboard.php:189
+msgid "Timestamp"
+msgstr ""
+
+#: admin/views/view-dashboard.php:190
+msgid "Module"
+msgstr ""
+
+#: admin/views/view-dashboard.php:191
+msgid "Event"
+msgstr ""
+
+#: admin/views/view-dashboard.php:196
+msgid "The log is empty."
+msgstr ""
+
+#: admin/views/view-dashboard.php:218
+msgid "Isolated Files"
+msgstr ""
+
+#: admin/views/view-dashboard.php:221
+msgid "Files in quarantine have been neutralized and can no longer be executed by the web server. They will be permanently deleted automatically after 30 days."
+msgstr ""
+
+#: admin/views/view-dashboard.php:225
+msgid "Isolated on"
+msgstr ""
+
+#: admin/views/view-dashboard.php:226
+msgid "Original Path"
+msgstr ""
+
+#: admin/views/view-dashboard.php:227
+msgid "Actions"
+msgstr ""
+
+#: admin/views/view-dashboard.php:235
+msgid "No files in quarantine."
+msgstr ""
+
+#: admin/views/view-dashboard.php:243
+msgid "Delete"
+msgstr ""
+
+#: admin/views/view-dashboard.php:259
+msgid "Module Settings"
+msgstr ""
+
+#: admin/views/view-dashboard.php:264
+msgid "Outdated Plugins & Themes"
+msgstr ""
+
+#: admin/views/view-dashboard.php:268
+msgid "Check for available updates"
+msgstr ""
+
+#: admin/views/view-dashboard.php:270
+msgid "Checks if plugins or themes are outdated and should be updated (security risk)."
+msgstr ""
+
+#: admin/views/view-dashboard.php:274
+msgid "Plugin Signature Check"
+msgstr ""
+
+#: admin/views/view-dashboard.php:278
+msgid "Check plugin files"
+msgstr ""
+
+#: admin/views/view-dashboard.php:280
+msgid "Compares all your plugin files with the original signatures from WordPress.org. Detects injected code in official plugins."
+msgstr ""
+
+#: admin/views/view-dashboard.php:284
+msgid "WordPress Core Signature Check"
+msgstr ""
+
+#: admin/views/view-dashboard.php:288
+msgid "Check core files"
+msgstr ""
+
+#: admin/views/view-dashboard.php:290
+msgid "Compares all WordPress core files (wp-includes, wp-admin) with original signatures from WordPress.org. Can be disabled if incompatible with server firewalls."
+msgstr ""
+
+#: admin/views/view-dashboard.php:294
+msgid "Deep Scan (Malware Heuristics)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:298
+msgid "Scan file system for malware"
+msgstr ""
+
+#: admin/views/view-dashboard.php:300
+msgid "Scans the root directory, theme, and uploads for known malware signatures and obfuscated scripts (backdoors/web shells)."
+msgstr ""
+
+#: admin/views/view-dashboard.php:304
+msgid "File Integrity Monitoring (FIM)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:308
+msgid "Enable strict system baseline"
+msgstr ""
+
+#. translators: %d: number of files
+#: admin/views/view-dashboard.php:316
+#, php-format
+msgid "Currently in database baseline: %d files"
+msgstr ""
+
+#: admin/views/view-dashboard.php:318
+msgid "The FIM (File Integrity Monitoring) module creates a fingerprint of all files on your server during the first start."
+msgstr ""
+
+#: admin/views/view-dashboard.php:319
+msgid "If a file is changed afterwards without an official update (e.g. through a hacker upload via FTP), the system immediately triggers an alarm."
+msgstr ""
+
+#: admin/views/view-dashboard.php:320
+msgid "Recommended for maximum security. If there are strong false alarms caused by exotic caching plugins, this additional module can be deactivated here."
+msgstr ""
+
+#: admin/views/view-dashboard.php:325
+msgid "Real-time Firewall (WAF)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:329
+msgid "Block attacks before execution"
+msgstr ""
+
+#: admin/views/view-dashboard.php:336
+msgid "Status:"
+msgstr ""
+
+#: admin/views/view-dashboard.php:336
+msgid "Active (MU-Plugin installed)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:336
+msgid "Inactive (MU-Plugin not found)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:338
+msgid "The Web Application Firewall intercepts SQL injections, malicious Cross-Site Scripting (XSS), and hacker bots in milliseconds before WordPress is even fully loaded. Uses extremely fast ModSecurity-based patterns."
+msgstr ""
+
+#: admin/views/view-dashboard.php:342
+msgid "XML-RPC Interface (Hardening)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:346
+msgid "Disable XML-RPC (Recommended)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:348
+msgid "Blocks access to the outdated `xmlrpc.php` interface, which is frequently abused by botnets for brute-force and DDoS attacks."
+msgstr ""
+
+#: admin/views/view-dashboard.php:352
+msgid "Telemetry & Threat Intelligence"
+msgstr ""
+
+#: admin/views/view-dashboard.php:356
+msgid "Send attack data for network analysis (GDPR-compliant)"
+msgstr ""
+
+#: admin/views/view-dashboard.php:358
+msgid "Helps train our global security network. Only metadata (IP addresses and malicious payloads) of clearly blocked attackers is reported (legitimate interest under Art. 6(1)(f) GDPR). Normal website visitors are not tracked."
+msgstr ""
+
+#: admin/views/view-dashboard.php:362
+msgid "Manual Baseline Creation"
+msgstr ""
+
+#: admin/views/view-dashboard.php:364
+msgid "Rebuild system baseline now"
+msgstr ""
+
+#: admin/views/view-dashboard.php:366
+msgid "Instantly rebuilds the fingerprint of all files. Useful if you have just intentionally modified files via FTP."
+msgstr ""
+
+#: admin/views/view-dashboard.php:371
+msgid "Save Settings"
+msgstr ""
+
+#: admin/views/view-dashboard.php:372
+msgid "Saved!"
+msgstr ""
+
+#: admin/views/view-dashboard.php:383
+msgid "Licensing"
+msgstr ""
+
+#: admin/views/view-dashboard.php:388
+msgid "Plugin is licensed"
+msgstr ""
+
+#. translators: %s: domain name
+#: admin/views/view-dashboard.php:391
+#, php-format
+msgid "Your domain <strong>%s</strong> is successfully licensed and protected."
+msgstr ""
+
+#: admin/views/view-dashboard.php:392
+msgid "Verified Email:"
+msgstr ""
+
+#: admin/views/view-dashboard.php:396
+msgid "Remove license"
+msgstr ""
+
+#: admin/views/view-dashboard.php:402
+msgid "License Required"
+msgstr ""
+
+#: admin/views/view-dashboard.php:403
+msgid "Please request a free license key to use Metzler_Webshield on this domain."
+msgstr ""
+
+#: admin/views/view-dashboard.php:407
+msgid "1. Request License Key"
+msgstr ""
+
+#: admin/views/view-dashboard.php:410
+msgid "Your Email Address"
+msgstr ""
+
+#: admin/views/view-dashboard.php:416
+msgid "The key will be sent to this email address."
+msgstr ""
+
+#: admin/views/view-dashboard.php:423
+msgid "2. Verify License Key"
+msgstr ""
+
+#: admin/views/view-dashboard.php:426
+msgid "Enter License Key"
+msgstr ""
+
+#: admin/views/view-dashboard.php:428
+msgid "E.g. A1B2C3D4E5F6G7H8"
+msgstr ""
+
+#: includes/class-metzler-webshield-fim.php:29
+msgid "FIM Baseline was automatically updated after a WP update."
+msgstr ""
+
+#: includes/class-metzler-webshield-login.php:37
+msgid "Bot Protection: Please move your mouse or type to prove you are human."
+msgstr ""
+
+#. translators: %1$s: IP address, %2$s: username
+#: includes/class-metzler-webshield-login.php:75
+#, php-format
+msgid "Brute-Force prevented: Bot login attempt (No JS) from IP: %1$s for user: %2$s"
+msgstr ""
+
+#: includes/class-metzler-webshield-login.php:85
+msgid "Metzler_Webshield:"
+msgstr ""
+
+#: includes/class-metzler-webshield-login.php:85
+msgid "Access denied. Suspicious bot activity detected. Please enable JavaScript."
+msgstr ""
+
+#: includes/class-metzler-webshield-quarantine.php:77
+#, php-format
+msgid "File moved to quarantine: %s"
+msgstr ""
+
+#: includes/class-metzler-webshield-quarantine.php:96
+#, php-format
+msgid "File restored from quarantine: %s"
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:43
+msgid "Please activate your license first."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:53
+msgid "System scan initialized. Checking files and updates..."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:87
+msgid "Scan queued"
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:100
+msgid "Scan completed."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:102
+msgid "Scan completed"
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:178
+#: includes/class-metzler-webshield-queue.php:187
+msgid "Update failed."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:180
+#: includes/class-metzler-webshield-queue.php:189
+msgid "Successfully updated."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:193
+msgid "Invalid request."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:202
+msgid "Log cleared."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:219
+msgid "The Smart Scan was aborted by the user."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:233
+#, php-format
+msgid "File marked as safe: %s"
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:251
+msgid "Could not move file to quarantine. (Permissions?)"
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:265
+msgid "Error during restoration."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:278
+msgid "Error during deletion."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:322
+msgid "Automatic scan aborted: No valid license found."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:332
+msgid "Automatic background scan (cron) started..."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:385
+msgid "Cron scan paused (time limit reached). It will resume on the next run."
+msgstr ""
+
+#: includes/class-metzler-webshield-queue.php:391
+msgid "Automatic background scan completed successfully."
+msgstr ""
+
+#: includes/class-metzler-webshield.php:267
+msgid "WAF rules successfully synchronized from Threat Intelligence Cloud."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:8
+msgid "Starting Config & Hardening checks..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:15
+#, php-format
+msgid "PHP version is up to date (%s)."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:20
+msgid "Critical: WP_DEBUG is enabled. This can reveal server paths and vulnerabilities to attackers. Please disable it in wp-config.php."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:26
+msgid "Critical: A user named 'admin' exists. This is the main target for brute-force attacks. Please rename or delete it."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:41
+#, php-format
+msgid "Security risk: wp-config.php has insecure file permissions (%s). Recommended is 0644 or 0400."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-config.php:45
+msgid "Config & Hardening check completed."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:24
+msgid "Error retrieving Core checksums."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:53
+msgid "Invalid response from WordPress.org API."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:82
+msgid "Error: Checksums lost in cache."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:110
+#, php-format
+msgid "Core file modified: %s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-core.php:116
+msgid "WordPress Core file check completed."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-files.php:8
+msgid "Starting heuristic malware search (complete file system scan)..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-files.php:137
+msgid "Deep scan of the file system completed."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-files.php:167
+#, php-format
+msgid "Could not read directory: %s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:10
+msgid "Initial system baseline is being generated in the background..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:13
+msgid "System baseline set successfully. All future file changes will now be monitored."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:17
+msgid "Starting File Integrity Monitoring across wp-content..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:59
+#, php-format
+msgid "FIM Alert: New, unknown file found -> %s%s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:64
+#, php-format
+msgid "FIM Alert: File modified after snapshot -> %s%s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:69
+#, php-format
+msgid "File Integrity Monitoring completed. (Checked: %d files)"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:8
+msgid "Collecting list of installed plugins..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:59
+#, php-format
+msgid "No wp.org signature available for plugin: %s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:114
+#, php-format
+msgid "Plugin file modified: %s -> %s%s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:137
+#, php-format
+msgid "Critical: Unknown file in plugin (Rogue File): %s -> %s%s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:146
+msgid "Plugin signature check completed."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:8
+msgid "Checking for available software updates..."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:26
+#, php-format
+msgid "Outdated WordPress version. Recommended: Update to %s %s"
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:33
+msgid "WordPress Core is up to date."
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:58
+msgid "Outdated plugin: "
+msgstr ""
+
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:63
+msgid "All plugins are up to date."
+msgstr ""
+
+#: includes/waf/class-metzler-webshield-waf-installer.php:15
+#, php-format
+msgid "WAF Installation failed: Could not create mu-plugins directory (%s)"
+msgstr ""
+
+#: includes/waf/class-metzler-webshield-waf-installer.php:46
+#, php-format
+msgid "WAF Installation failed: Could not write file (%s). Error: %s"
+msgstr ""
+
+#: includes/waf/class-metzler-webshield-waf-installer.php:50
+msgid "WAF MU-Plugin installed successfully."
+msgstr ""

@@ -8,7 +8,7 @@ class Metzler_Webshield_Scanner_Core {
             global $wp_version;
             $locale = get_locale();
             
-            Metzler_Webshield_Logger::log(sprintf( __("Loading Core checksums for WordPress %1$s (%s) from WordPress.org...", "metzler-webshield"), $wp_version, $locale ), "core" );
+            Metzler_Webshield_Logger::log(sprintf( __('Loading Core checksums for WordPress %1$s (%2$s) from WordPress.org...', 'metzler-webshield'), $wp_version, $locale ), "core" );
             
             $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
             $token = get_option( 'metzler_webshield_license_token' );

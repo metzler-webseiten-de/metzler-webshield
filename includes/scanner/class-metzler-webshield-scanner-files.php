@@ -127,7 +127,7 @@ class Metzler_Webshield_Scanner_Files {
                             $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
                             $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
                             
-                            Metzler_Webshield_Logger::log(sprintf( __("Critical: %1$s (%s)%3$s", "metzler-webshield"), $threat_reason, $relative_path, $actions ), "files", "error");
+                            Metzler_Webshield_Logger::log(sprintf( __('Critical: %1$s (%2$s)%3$s', 'metzler-webshield'), $threat_reason, $relative_path, $actions ), "files", "error");
                         }
                     }
                 }

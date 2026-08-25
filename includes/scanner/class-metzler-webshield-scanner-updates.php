@@ -10,7 +10,7 @@ class Metzler_Webshield_Scanner_Updates {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process_core'),
-                'message' => 'Prüfe WordPress-Version...'
+                'message' => __('Checking WordPress version...', 'metzler-webshield')
             );
         }
         
@@ -23,7 +23,7 @@ class Metzler_Webshield_Scanner_Updates {
                     if ( $update->response === 'upgrade' ) {
                         $has_core_update = true;
                         $button = '<button class="button button-small metzler-webshield-update-btn" data-update-type="core" data-update-item="core">Core Update ausführen</button>';
-                        Metzler_Webshield_Logger::log(__("Outdated WordPress version. Recommended: Update to ", "metzler-webshield") . esc_html($update->version) . " " . $button, "updates", "warning");
+                        Metzler_Webshield_Logger::log(sprintf( __("Outdated WordPress version. Recommended: Update to %s %s", "metzler-webshield"), esc_html($update->version), $button ), "updates", "warning");
                         break;
                     }
                 }
@@ -36,7 +36,7 @@ class Metzler_Webshield_Scanner_Updates {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process_plugins'),
-                'message' => 'Prüfe Plugin-Updates...'
+                'message' => __('Checking plugin updates...', 'metzler-webshield')
             );
         }
         
@@ -63,7 +63,7 @@ class Metzler_Webshield_Scanner_Updates {
                 Metzler_Webshield_Logger::log(__("All plugins are up to date.", "metzler-webshield"), "updates", "success");
             }
             
-            return array('complete' => true, 'message' => 'Update-Prüfung abgeschlossen');
+            return array('complete' => true, 'message' => __('Update check completed', 'metzler-webshield'));
         }
         
         return array('complete' => true);

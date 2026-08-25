@@ -1,21 +1,26 @@
 jQuery(document).ready(function($) {
+
+    // --- Toast Notifications ---
+    function showToast(message, type = 'success') {
+        let toast = $('#metzler-webshield-toast');
+        if (toast.length === 0) {
+            toast = $('<div id="metzler-webshield-toast"></div>').appendTo('body');
+        }
+        toast.removeClass('toast-error').text(message);
+        if (type === 'error') {
+            toast.addClass('toast-error');
+        }
+        toast.stop(true, true).fadeIn(300).delay(4000).fadeOut(300);
+    }
+
     let scanInProgress = false;
-    let rapidInterval = null;
+    
     let issuesFound = 0;
-    let totalFilesScanned = 0;
+    
     let currentModule = '';
     let scanStartTime = 0;
 
-    const fakePaths = [
-        "wp-includes/functions.php",
-        "wp-includes/formatting.php",
-        "wp-admin/admin-ajax.php",
-        "wp-admin/includes/file.php",
-        "wp-content/plugins/index.php",
-        "wp-content/uploads/2023/index.php",
-        "wp-config.php",
-        "wp-settings.php"
-    ];
+    
 
     function setHeroStatus(status, title, subtitle) {
         const hero = $('#metzler-webshield-hero');
@@ -41,27 +46,7 @@ jQuery(document).ready(function($) {
         if (subtitle) $('#hero-subtitle').text(subtitle);
     }
 
-    function startRapidFeedback() {
-        if (rapidInterval) clearInterval(rapidInterval);
-        
-        rapidInterval = setInterval(() => {
-            if (!scanInProgress) {
-                clearInterval(rapidInterval);
-                return;
-            }
-            
-            let base = fakePaths[Math.floor(Math.random() * fakePaths.length)];
-            if (currentModule === 'scan_plugins') base = "wp-content/plugins/" + Math.random().toString(36).substring(7) + ".php";
-            if (currentModule === 'scan_files') base = "wp-content/uploads/" + Math.random().toString(36).substring(7) + ".jpg";
-            if (currentModule === 'scan_core') base = "wp-includes/" + Math.random().toString(36).substring(5) + ".php";
-            
-            $('#scan-rapid-path').text('Prüfe: ' + base);
-            
-            totalFilesScanned += Math.floor(Math.random() * 8) + 1;
-            $('#stat-files-scanned').text(totalFilesScanned.toLocaleString());
-            
-        }, 70); 
-    }
+    
 
     function fetchLogs(callback) {
         $.post(metzler_webshield_ajax.ajax_url, {
@@ -99,15 +84,15 @@ jQuery(document).ready(function($) {
                 }
                 
                 if (scanInProgress && issuesFound > 0) {
-                    setHeroStatus('warning', 'Sicherheitsrisiken gefunden!', 'Der Smart Scan läuft noch, aber es wurden bereits Probleme entdeckt.');
+                    setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_risks, metzler_webshield_ajax.i18n.hero_risks_scan);
                 }
                 
                 // Set initial board state properly
                 if (!scanInProgress) {
                     if (issuesFound > 0) {
-                        setHeroStatus('warning', 'Sicherheitsrisiken erkannt!', 'Bitte überprüfe das Sicherheitsprotokoll.');
+                        setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_risks, metzler_webshield_ajax.i18n.hero_check_log);
                     } else {
-                        setHeroStatus('safe', 'Deine Website ist sicher.', 'Alle Hintergrund-Wächter sind aktiv und aktuell.');
+                        setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_guards_active : metzler_webshield_ajax.i18n.hero_local_desc));
                     }
                 }
             }
@@ -154,11 +139,11 @@ jQuery(document).ready(function($) {
                 btn.replaceWith('<span style="color:#00a32a;">✔ Erfolgreich aktualisiert</span>');
                 issuesFound = Math.max(0, issuesFound - 1);
                 if (issuesFound === 0) {
-                    setHeroStatus('safe', 'Deine Website ist sicher.', 'Alle Probleme wurden behoben.');
+                    setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_issues_fixed);
                 }
             } else {
                 btn.text('Fehler beim Update');
-                alert(response.data.message || 'Ein Fehler ist aufgetreten.');
+                showToast(response.data.message || 'Ein Fehler ist aufgetreten.', 'error');
             }
         });
     });
@@ -196,9 +181,20 @@ jQuery(document).ready(function($) {
 
     function updateScanStage(currentTask) {
         const stagesOrder = ['init', 'scan_updates', 'scan_plugins', 'scan_core', 'scan_files', 'scan_fim', 'scan_config'];
+        const isLicensed = metzler_webshield_ajax.is_licensed;
         
         if (currentTask === 'complete') {
             $('.scan-stage').show().removeClass('active').addClass('completed');
+            
+            if (!isLicensed) {
+                $('.scan-stage[data-stage="scan_plugins"], .scan-stage[data-stage="scan_core"]')
+                    .removeClass('completed active')
+                    .addClass('skipped')
+                    .find('.stage-text').html(function(_, oldHtml) {
+                        return oldHtml.indexOf('Skipped') === -1 ? oldHtml + ' <i>(Skipped - Free Cloud License required)</i>' : oldHtml;
+                    });
+            }
+            
             $('.scan-stage[data-stage="complete"]').show();
             return;
         }
@@ -206,13 +202,22 @@ jQuery(document).ready(function($) {
         let foundCurrent = false;
         stagesOrder.forEach(function(stage) {
             const el = $('.scan-stage[data-stage="' + stage + '"]');
+            
+            if (!isLicensed && (stage === 'scan_plugins' || stage === 'scan_core')) {
+                el.show().removeClass('active completed').addClass('skipped');
+                el.find('.stage-text').html(function(_, oldHtml) {
+                    return oldHtml.indexOf('Skipped') === -1 ? oldHtml + ' <i>(Skipped - Free Cloud License required)</i>' : oldHtml;
+                });
+                return;
+            }
+
             if (stage === currentTask) {
                 foundCurrent = true;
-                el.show().removeClass('completed').addClass('active');
+                el.show().removeClass('completed skipped').addClass('active');
             } else if (!foundCurrent) {
-                el.show().removeClass('active').addClass('completed');
+                el.show().removeClass('active skipped').addClass('completed');
             } else {
-                el.show().removeClass('active completed');
+                el.show().removeClass('active completed skipped');
             }
         });
         $('.scan-stage[data-stage="complete"]').hide();
@@ -226,11 +231,11 @@ jQuery(document).ready(function($) {
         $('#scan-progress-wrapper').show();
         $('#btn-cancel-scan').show();
         $('#scan-progress-fill').css('width', '5%');
-        $('#scan-status-text').text('Initialisiere Smart Scan...');
+        $('#scan-status-text').text(metzler_webshield_ajax.i18n.init_scan);
         
         updateScanStage('init');
         
-        setHeroStatus('scanning', 'Smart Scan läuft...', 'Dateien und Datenbanken werden analysiert...');
+        setHeroStatus('scanning', metzler_webshield_ajax.i18n.hero_scan_running, metzler_webshield_ajax.i18n.hero_scan_desc);
         
         $.post(metzler_webshield_ajax.ajax_url, {
             _wpnonce: metzler_webshield_ajax.nonce,
@@ -239,14 +244,21 @@ jQuery(document).ready(function($) {
             if(response.success) {
                 scanStartTime = Date.now();
                 processQueue();
-                startRapidFeedback();
+                
+            } else {
+                scanInProgress = false;
+                $('#scan-progress-wrapper').hide();
+                $('#btn-cancel-scan').hide();
+                $('#metzler-webshield-scan-controls').show();
+                fetchLogs();
+                showToast(response.data ? response.data.message : 'Error starting scan', 'error');
             }
         });
     });
 
     $('#btn-cancel-scan').on('click', function(e) {
         e.preventDefault();
-        if(!confirm("Möchtest du den aktuellen Scan wirklich abbrechen?")) return;
+        if(!confirm(metzler_webshield_ajax.i18n.confirm_cancel_scan)) return;
         scanInProgress = false;
         $(this).hide();
         $('#scan-progress-wrapper').hide();
@@ -256,16 +268,16 @@ jQuery(document).ready(function($) {
             _wpnonce: metzler_webshield_ajax.nonce,
             action: 'metzler_webshield_cancel_scan'
         }, function(response) {
-            setHeroStatus('warning', 'Scan abgebrochen', 'Der Smart Scan wurde manuell abgebrochen.');
+            setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_scan_aborted, metzler_webshield_ajax.i18n.hero_aborted_desc);
             fetchLogs();
-            clearInterval(rapidInterval);
+            
         });
     });
 
     function finishScan() {
         scanInProgress = false;
-        clearInterval(rapidInterval);
-        $('#scan-rapid-path').text('');
+        
+        
         $('#scan-eta').hide();
         $('#btn-cancel-scan').hide();
         
@@ -281,9 +293,9 @@ jQuery(document).ready(function($) {
                 $('#metzler-webshield-scan-controls').slideDown();
                 
                 if (issuesFound > 0) {
-                    setHeroStatus('warning', 'Sicherheitsrisiken gefunden!', 'Es wurden Probleme entdeckt. Bitte überprüfe das Protokoll unten.');
+                    setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_risks, metzler_webshield_ajax.i18n.hero_issues_found);
                 } else {
-                    setHeroStatus('safe', 'Deine Website ist sicher.', 'Der Smart Scan hat keine Bedrohungen gefunden.');
+                    setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_no_threats);
                 }
             }, 1000);
         });
@@ -292,14 +304,14 @@ jQuery(document).ready(function($) {
     $('#btn-refresh-logs').on('click', fetchLogs);
     
     $('#btn-clear-logs').on('click', function() {
-        if(confirm('Möchtest du das gesamte Sicherheitsprotokoll wirklich leeren?')) {
+        if(confirm(metzler_webshield_ajax.i18n.confirm_clear_log)) {
             $.post(metzler_webshield_ajax.ajax_url, {
             _wpnonce: metzler_webshield_ajax.nonce,
             action: 'metzler_webshield_clear_logs'
             }, function(response) {
                 if(response.success) {
                     fetchLogs(function() {
-                        setHeroStatus('safe', 'Deine Website ist sicher.', 'Das Protokoll wurde geleert.');
+                        setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_log_cleared);
                         issuesFound = 0;
                     });
                 }
@@ -315,7 +327,7 @@ jQuery(document).ready(function($) {
             action: 'metzler_webshield_create_baseline'
         }, function(response) {
             if(response.success) {
-                alert(response.data.message);
+                showToast(response.data.message);
                 fetchLogs();
             }
             btn.prop('disabled', false).text('FIM Baseline setzen');
@@ -359,7 +371,7 @@ jQuery(document).ready(function($) {
                 loadQuarantine();
                 fetchLogs(); // UI dynamisch aktualisieren
             } else {
-                alert(response.data.message || metzler_webshield_ajax.i18n.move_error);
+                showToast(response.data.message || metzler_webshield_ajax.i18n.move_error, 'error');
                 btn.text(metzler_webshield_ajax.i18n.move_to_quarantine);
             }
         });
@@ -369,16 +381,6 @@ jQuery(document).ready(function($) {
     $('.metzler-webshield-tab-link').on('click', function(e) {
         e.preventDefault();
         const targetTab = $(this).data('tab');
-
-        if (!metzler_webshield_ajax.is_licensed && targetTab !== 'tab-license') {
-            alert(metzler_webshield_ajax.i18n.please_license);
-            // Force switch to license tab if they try to click something else
-            $('.metzler-webshield-tab-link').removeClass('nav-tab-active');
-            $('.metzler-webshield-tab-link[data-tab="tab-license"]').addClass('nav-tab-active');
-            $('.metzler-webshield-tab-content').hide();
-            $('#tab-license').show();
-            return;
-        }
 
         $('.metzler-webshield-tab-link').removeClass('nav-tab-active');
         $(this).addClass('nav-tab-active');
@@ -423,7 +425,7 @@ jQuery(document).ready(function($) {
             action: 'metzler_webshield_quarantine_restore', id: id }, function(res) {
             if(res.success) {
                 loadQuarantine();
-                alert(metzler_webshield_ajax.i18n.file_restored);
+                showToast(metzler_webshield_ajax.i18n.file_restored);
             }
         });
     });
@@ -563,8 +565,8 @@ jQuery(document).ready(function($) {
                 feedback.css('color', 'green').text(metzler_webshield_ajax.i18n.license_valid);
                 setTimeout(function(){ feedback.text(''); btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.recheck_now); }, 3000);
             } else {
-                alert(metzler_webshield_ajax.i18n.license_invalid);
-                location.reload();
+                showToast(metzler_webshield_ajax.i18n.license_invalid, 'error');
+                setTimeout(function(){ location.reload(); }, 2000);
             }
         });
     });
@@ -581,3 +583,10 @@ jQuery(document).ready(function($) {
     });
     // Initial Load handled via PHP SSR for better performance
 });
+
+
+
+
+
+
+

@@ -8,10 +8,17 @@ class Metzler_Webshield_Scanner_Core {
             global $wp_version;
             $locale = get_locale();
             
-            Metzler_Webshield_Logger::log("Lade Core-Checksums für WordPress $wp_version ($locale) von WordPress.org...", "core" );
+            Metzler_Webshield_Logger::log(sprintf( __("Loading Core checksums for WordPress %1$s (%s) from WordPress.org...", "metzler-webshield"), $wp_version, $locale ), "core" );
             
-            $url = "https://api.wordpress.org/core/checksums/1.0/?version=$wp_version&locale=$locale";
-            $response = wp_remote_get( $url );
+            $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
+            $token = get_option( 'metzler_webshield_license_token' );
+            $url = $api_url . "/scanner/threat-intel/core?version=$wp_version&locale=$locale";
+            $response = wp_remote_get( $url, array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $token,
+                )
+            ) );
             
             if ( is_wp_error( $response ) ) {
                 Metzler_Webshield_Logger::log(__("Error retrieving Core checksums.", "metzler-webshield"), "core", "error");
@@ -21,14 +28,33 @@ class Metzler_Webshield_Scanner_Core {
             $body = wp_remote_retrieve_body( $response );
             $data = json_decode( $body, true );
             
+            // 1. Process Threat Intelligence (Vulnerabilities)
+            if ( !empty($data['vulnerabilities']) && is_array($data['vulnerabilities']) ) {
+                foreach ( $data['vulnerabilities'] as $vuln ) {
+                    $title = isset($vuln['title']) ? $vuln['title'] : __('Unknown vulnerability', 'metzler-webshield');
+                    Metzler_Webshield_Logger::log(
+                        sprintf(
+                            /* translators: %s: Vulnerability title */
+                            __('CRITICAL: Known Core vulnerability found: %s', 'metzler-webshield'),
+                            $title
+                        ), 
+                        "core", 
+                        "critical" 
+                    );
+                }
+            }
+            
+            // 2. Extract checksums from Threat Intel wrapper
+            $api_data = isset($data['checksums']) ? $data['checksums'] : $data;
+            
             // wp.org returns an object where checksums might be deeply nested or simple, depending on version, 
-            // but for 1.0 it is usually $data['checksums']
-            if ( ! isset($data['checksums']) || ! is_array($data['checksums']) ) {
+            // but for 1.0 it is usually $api_data['checksums']
+            if ( ! isset($api_data['checksums']) || ! is_array($api_data['checksums']) ) {
                 Metzler_Webshield_Logger::log(__("Invalid response from WordPress.org API.", "metzler-webshield"), "core", "error");
                 return array('complete' => true);
             }
             
-            $checksums = $data['checksums'];
+            $checksums = $api_data['checksums'];
             $files = array_keys($checksums);
             
             // wp-content (Plugins, Themes) should not be checked by the core scanner
@@ -42,7 +68,7 @@ class Metzler_Webshield_Scanner_Core {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'files' => $files, 'index' => 0),
-                'message' => 'Core-Checksums geladen. Beginne Dateiprüfung...'
+                'message' => __('Core checksums loaded. Starting file check...', 'metzler-webshield')
             );
         }
         
@@ -81,7 +107,7 @@ class Metzler_Webshield_Scanner_Core {
                     }
                     
                     if ( ! $is_valid ) {
-                        Metzler_Webshield_Logger::log(__("Core file modified: ", "metzler-webshield") . esc_html($file), "core", "error");
+                        Metzler_Webshield_Logger::log(sprintf( __("Core file modified: %s", "metzler-webshield"), esc_html($file) ), "core", "error");
                     }
                 }
             }
@@ -89,7 +115,7 @@ class Metzler_Webshield_Scanner_Core {
             if ( $end >= $total ) {
                 Metzler_Webshield_Logger::log(__("WordPress Core file check completed.", "metzler-webshield"), "core", "success");
                 delete_transient( 'metzler_webshield_core_checksums' );
-                return array('complete' => true, 'message' => 'Core Scan abgeschlossen');
+                return array('complete' => true, 'message' => __('Core scan completed', 'metzler-webshield'));
             }
             
             return array(

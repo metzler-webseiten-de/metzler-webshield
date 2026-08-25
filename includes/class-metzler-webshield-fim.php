@@ -26,7 +26,7 @@ class Metzler_Webshield_FIM {
 
     public function on_update_complete(): void {
         $this->build_baseline(); 
-        Metzler_Webshield_Logger::log("FIM Baseline wurde nach einem WP-Update automatisch aktualisiert.", "system" );
+        Metzler_Webshield_Logger::log( __("FIM Baseline was automatically updated after a WP update.", "metzler-webshield"), "system" );
     }
 
     public function build_baseline(): int {

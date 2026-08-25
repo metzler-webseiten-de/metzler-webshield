@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     global $wpdb;
     
     $last_scan = get_option('metzler_webshield_last_scan'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $last_scan_text = $last_scan ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime($last_scan) ) : 'Nie'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $last_scan_text = $last_scan ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime($last_scan) ) : esc_html__('Never', 'metzler-webshield'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     
     // SSR: Fetch Logs and Calculate Threats
     $logs = Metzler_Webshield_Logger::get_logs(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
@@ -21,8 +21,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     $hero_status = $issues_found > 0 ? 'warning' : 'safe'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     
     $is_licensed = get_option('metzler_webshield_is_licensed', false); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $active_tab_class = $is_licensed ? 'nav-tab-active' : ''; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $license_tab_active = !$is_licensed ? 'nav-tab-active' : ''; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $active_tab_class = 'nav-tab-active'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $license_tab_active = ''; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $fim_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}metzler_webshield_files"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     ?>
     <nav class="nav-tab-wrapper metzler-webshield-nav-tabs" style="margin-bottom: 20px;">
         <a href="#tab-dashboard" class="nav-tab <?php echo esc_attr($active_tab_class); ?> metzler-webshield-tab-link" data-tab="tab-dashboard"><?php echo esc_html__("Overview", "metzler-webshield"); ?></a>
@@ -33,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     </nav>
 
     
-    <div id="tab-dashboard" class="metzler-webshield-tab-content" style="display:<?php echo $is_licensed ? 'block' : 'none'; ?>;">
+    <div id="tab-dashboard" class="metzler-webshield-tab-content" style="display:block;">
     <!-- Hero Status Section (The Big Shield) -->
     <div id="metzler-webshield-hero" class="metzler-webshield-hero status-<?php echo esc_attr($hero_status); ?>">
         <div class="metzler-webshield-hero-inner">
@@ -41,8 +42,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 <span class="dashicons <?php echo esc_attr($hero_status) === 'safe' ? 'dashicons-shield' : 'dashicons-warning'; ?>"></span>
             </div>
             <div class="hero-content">
-                <h1 id="hero-title"><?php echo esc_attr($hero_status) === 'safe' ? esc_html__('Your website is secure.', 'metzler-webshield') : esc_html__('Security risks detected!', 'metzler-webshield'); ?></h1>
-                <p id="hero-subtitle"><?php echo esc_attr($hero_status) === 'safe' ? esc_html__('All background guards are active and up to date.', 'metzler-webshield') : esc_html__('Please check the security log.', 'metzler-webshield'); ?></p>
+                <h1 id="hero-title"><?php echo esc_attr($hero_status) === 'safe' ? ($is_licensed ? esc_html__('Your website is secure.', 'metzler-webshield') : esc_html__('Basic protection active.', 'metzler-webshield')) : esc_html__('Security risks detected!', 'metzler-webshield'); ?></h1>
+                <p id="hero-subtitle"><?php echo esc_attr($hero_status) === 'safe' ? ($is_licensed ? esc_html__('All background guards are active and up to date.', 'metzler-webshield') : esc_html__('Activate a free license to unlock Smart Scan & Cloud Features.', 'metzler-webshield')) : esc_html__('Please check the security log.', 'metzler-webshield'); ?></p>
                 
                 <div id="metzler-webshield-scan-controls">
                     <button id="btn-start-scan" class="button button-primary button-hero metzler-webshield-smart-scan-btn">
@@ -85,11 +86,12 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                     </div>
                     
                     <div class="scan-feedback" style="margin-top:20px; background:#f6f7f7; padding:10px; border-radius:4px; border:1px solid #c3c4c7;">
-                        <div style="flex-shrink:0; min-width: 150px;">
-                            <span id="scan-status-text"><?php echo esc_html__("Starting...", "metzler-webshield"); ?></span> 
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                            <div style="flex-grow:1; margin-right:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <span id="scan-status-text"><?php echo esc_html__("Starting...", "metzler-webshield"); ?></span> 
+                            </div>
+                            <button id="btn-cancel-scan" class="button button-small" style="color:#d63638; flex-shrink:0;"><?php echo esc_html__("Cancel Scan", "metzler-webshield"); ?></button>
                         </div>
-                        <div id="scan-rapid-path" class="rapid-path-feedback" style="flex-grow:1; margin:0 15px; text-align:left; color:#646970; font-family:monospace; font-size:11px;"></div>
-                        <button id="btn-cancel-scan" class="button button-small" style="color:#d63638; flex-shrink:0;"><?php echo esc_html__("Cancel Scan", "metzler-webshield"); ?></button>
                     </div>
                 </div>
             </div>
@@ -101,7 +103,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         <div class="stat-item">
             <span class="dashicons dashicons-yes-alt"></span>
             <div class="stat-text">
-                <strong id="stat-files-scanned">0</strong>
+                <strong id="stat-files-scanned"><?php echo esc_html(number_format_i18n((int)$fim_count)); ?></strong>
                 <span><?php echo esc_html__("Scanned Files", "metzler-webshield"); ?></span>
             </div>
         </div>
@@ -352,7 +354,7 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                         <th scope="row"><?php echo esc_html__("Telemetry & Threat Intelligence", "metzler-webshield"); ?></th>
                         <td>
                             <label>
-                                <input type="checkbox" id="metzler-webshield-setting-telemetry" <?php echo get_option('metzler_webshield_enable_telemetry', '1') ? 'checked' : ''; ?>>
+                                <input type="checkbox" id="metzler-webshield-setting-telemetry" <?php echo get_option('metzler_webshield_enable_telemetry', '0') ? 'checked' : ''; ?>>
                                 <strong><?php echo esc_html__("Send attack data for network analysis (GDPR-compliant)", "metzler-webshield"); ?></strong>
                             </label>
                             <p class="description"><?php echo esc_html__("Helps train our global security network. Only metadata (IP addresses and malicious payloads) of clearly blocked attackers is reported (legitimate interest under Art. 6(1)(f) GDPR). Normal website visitors are not tracked.", "metzler-webshield"); ?></p>
@@ -376,7 +378,7 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
     </div>
     
     <!-- Tab License -->
-    <div id="tab-license" class="metzler-webshield-tab-content" style="display:<?php echo $is_licensed ? 'none' : 'block'; ?>;">
+    <div id="tab-license" class="metzler-webshield-tab-content" style="display:none;">
         <div class="postbox metzler-webshield-postbox">
             <h2 class="hndle">
                 <span class="dashicons dashicons-admin-network"></span>
@@ -441,4 +443,5 @@ sprintf(wp_kses_post(__("Your domain <strong>%s</strong> is successfully license
     <div style="clear:both; height:80px; width:100%;"></div>
     
 </div>
+
 

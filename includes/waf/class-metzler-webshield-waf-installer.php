@@ -12,7 +12,7 @@ class Metzler_Webshield_WAF_Installer {
         // Ensure mu-plugins directory exists
         if ( ! is_dir($mu_dir) ) {
             if ( ! wp_mkdir_p($mu_dir) ) {
-                Metzler_Webshield_Logger::log("WAF Installation fehlgeschlagen: Konnte mu-plugins Verzeichnis nicht erstellen ($mu_dir)", "system", "error");
+                Metzler_Webshield_Logger::log(sprintf( __("WAF Installation failed: Could not create mu-plugins directory (%s)", "metzler-webshield"), $mu_dir ), "system", "error");
                 return false;
             }
         }
@@ -43,7 +43,7 @@ class Metzler_Webshield_WAF_Installer {
         if ($result === false) {
             $error = error_get_last();
             $err_msg = $error['message'] ?? 'Unknown error';
-            Metzler_Webshield_Logger::log("WAF Installation fehlgeschlagen: Konnte Datei nicht schreiben ($boot_file). Fehler: $err_msg", "system", "error");
+            Metzler_Webshield_Logger::log(sprintf( __("WAF Installation failed: Could not write file (%s). Error: %s", "metzler-webshield"), $boot_file, $err_msg ), "system", "error");
             return false;
         }
         

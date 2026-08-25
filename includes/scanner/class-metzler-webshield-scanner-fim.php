@@ -21,7 +21,7 @@ class Metzler_Webshield_Scanner_FIM {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'index' => 0),
-                'message' => 'FIM-Scanner läuft...'
+                'message' => __('FIM scanner running...', 'metzler-webshield')
             );
         }
         
@@ -56,18 +56,18 @@ class Metzler_Webshield_Scanner_FIM {
                     // File is new!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                    Metzler_Webshield_Logger::log(__("FIM Alert: New, unknown file found -> ", "metzler-webshield") . esc_html($relative_path) . $actions, "system", "error");
+                    Metzler_Webshield_Logger::log(sprintf( __("FIM Alert: New, unknown file found -> %s%s", "metzler-webshield"), esc_html($relative_path), $actions ), "system", "error");
                 } else if ( $baseline_row->file_hash !== $actual_hash ) {
                     // File is modified!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                    Metzler_Webshield_Logger::log(__("FIM Alert: File modified after snapshot -> ", "metzler-webshield") . esc_html($relative_path) . $actions, "system", "error");
+                    Metzler_Webshield_Logger::log(sprintf( __("FIM Alert: File modified after snapshot -> %s%s", "metzler-webshield"), esc_html($relative_path), $actions ), "system", "error");
                 }
             }
             
             if ( $end >= $total ) {
-                Metzler_Webshield_Logger::log("File Integrity Monitoring abgeschlossen. (Geprüft: $total Dateien)", "system", "success");
-                return array('complete' => true, 'message' => 'FIM Scan abgeschlossen');
+                Metzler_Webshield_Logger::log(sprintf( __("File Integrity Monitoring completed. (Checked: %d files)", "metzler-webshield"), $total ), "system", "success");
+                return array('complete' => true, 'message' => __('FIM scan completed', 'metzler-webshield'));
             }
             
             return array(

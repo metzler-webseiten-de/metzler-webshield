@@ -34,7 +34,14 @@ class Metzler_Webshield_Login {
                         loginForm.addEventListener("submit", function(e) {
                             if (!isHuman) {
                                 e.preventDefault();
-                                alert("<?php echo esc_js(__('Bot Protection: Please move your mouse or type to prove you are human.', 'metzler-webshield')); ?>");
+                                const msg = "<?php echo esc_js(__('Bot Protection: Please move your mouse or type to prove you are human.', 'metzler-webshield')); ?>";
+                                const errorDiv = document.createElement("div");
+                                errorDiv.id = "login_error";
+                                errorDiv.className = "notice notice-error";
+                                errorDiv.innerHTML = "<p><strong>" + msg + "</strong></p>";
+                                const existingError = document.getElementById("login_error");
+                                if (existingError) existingError.replaceWith(errorDiv);
+                                else loginForm.parentNode.insertBefore(errorDiv, loginForm);
                                 return;
                             }
                             let clear = "";
@@ -53,10 +60,6 @@ class Metzler_Webshield_Login {
     }
 
     public function verify_login_js( $user, $username, $password ) {
-        if ( ! get_option('metzler_webshield_is_licensed') ) {
-            return $user;
-        }
-
         if ( empty( $username ) || empty( $password ) || ! isset( $_SERVER["REQUEST_METHOD"] ) || $_SERVER["REQUEST_METHOD"] !== "POST" ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             return $user;
         }

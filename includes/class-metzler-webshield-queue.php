@@ -39,18 +39,17 @@ class Metzler_Webshield_Queue {
         check_ajax_referer( 'metzler_webshield_nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         
-        if ( ! get_option( 'metzler_webshield_is_licensed' ) ) {
-            wp_send_json_error(array('message' => __('Please activate your license first.', 'metzler-webshield')));
-        }
+        $is_licensed = get_option( 'metzler_webshield_is_licensed' );
         
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         $wpdb->query("TRUNCATE TABLE $table_name"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        
         Metzler_Webshield_Logger::cleanup_old_logs();
         
         update_option('metzler_webshield_last_scan_start', current_time('mysql'));
 
-        Metzler_Webshield_Logger::log("System-Scan initialisiert. Überprüfe Dateien und Updates...", "system" );
+        Metzler_Webshield_Logger::log( __("System scan initialized. Checking files and updates...", "metzler-webshield"), "system" );
 
         $tasks = array();
         
@@ -58,12 +57,14 @@ class Metzler_Webshield_Queue {
             $tasks[] = array('type' => 'scan_updates', 'payload' => json_encode(array('step' => 'init')));
         }
         
-        if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
+        // Cloud-only scanners
+        if ( $is_licensed ) {
+            if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
+                $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
+            }
+            if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
+                $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
+            }
         }
         
         if ( get_option('metzler_webshield_enable_files', '1') === '1' ) {
@@ -97,7 +98,7 @@ class Metzler_Webshield_Queue {
         $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         
         if ( ! $task ) {
-            Metzler_Webshield_Logger::log("Scan abgeschlossen.", "system", "success");
+            Metzler_Webshield_Logger::log( __("Scan completed.", "metzler-webshield"), "system", "success");
             update_option('metzler_webshield_last_scan', current_time('mysql'));
             wp_send_json_success(array('status' => 'complete', 'message' => __('Scan completed', 'metzler-webshield')));
         }
@@ -230,7 +231,7 @@ class Metzler_Webshield_Queue {
         $fim->accept_file($path);
         
         Metzler_Webshield_Logger::resolve_path_logs($path); // Delete old warnings
-        Metzler_Webshield_Logger::log("Datei als sicher markiert: $path", "system", "success");
+        Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");
         
         wp_send_json_success();
     }
@@ -318,10 +319,7 @@ class Metzler_Webshield_Queue {
     }
     
     public static function cron_start_scan(): void {
-        if ( ! get_option( 'metzler_webshield_is_licensed' ) ) {
-            Metzler_Webshield_Logger::log(__("Automatic scan aborted: No valid license found.", "metzler-webshield"), "system", "error");
-            return;
-        }
+        $is_licensed = get_option( 'metzler_webshield_is_licensed' );
 
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
@@ -337,12 +335,13 @@ class Metzler_Webshield_Queue {
             $tasks[] = array('type' => 'scan_updates', 'payload' => json_encode(array('step' => 'init')));
         }
         
-        if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
+        if ( $is_licensed ) {
+            if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
+                $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
+            }
+            if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
+                $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
+            }
         }
         
         if ( get_option('metzler_webshield_enable_files', '1') === '1' ) {

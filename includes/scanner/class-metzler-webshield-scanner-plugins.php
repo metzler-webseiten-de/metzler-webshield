@@ -24,7 +24,7 @@ class Metzler_Webshield_Scanner_Plugins {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'plugins' => $plugins_to_check, 'index' => 0),
-                'message' => 'Lade Plugin-Signaturen...'
+                'message' => __('Loading plugin signatures...', 'metzler-webshield')
             );
         }
         
@@ -46,21 +46,48 @@ class Metzler_Webshield_Scanner_Plugins {
                 
                 if ( $slug === '.' ) continue;
                 
-                $response = wp_remote_get( "https://downloads.wordpress.org/plugin-checksums/{$slug}/{$version}.json", array('timeout' => 15) );
+                $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
+                $token = get_option( 'metzler_webshield_license_token' );
+                $response = wp_remote_get( $api_url . "/scanner/threat-intel/plugin/{$slug}/{$version}", array(
+                    'timeout' => 15,
+                    'headers' => array(
+                        'Authorization' => 'Bearer ' . $token,
+                    )
+                ) );
                 
                 if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-                    Metzler_Webshield_Logger::log("Keine wp.org Signatur für Plugin verfügbar: {$name}", "plugins" );
+                    Metzler_Webshield_Logger::log(sprintf( __("No wp.org signature available for plugin: %s", "metzler-webshield"), $name ), "plugins" );
                     continue;
                 }
                 
                 $body = wp_remote_retrieve_body( $response );
                 $data = json_decode( $body, true );
                 
-                if ( isset($data['files']) && is_array($data['files']) ) {
+                // 1. Process Threat Intelligence (Vulnerabilities)
+                if ( !empty($data['vulnerabilities']) && is_array($data['vulnerabilities']) ) {
+                    foreach ( $data['vulnerabilities'] as $vuln ) {
+                        $title = isset($vuln['title']) ? $vuln['title'] : __('Unknown vulnerability', 'metzler-webshield');
+                        Metzler_Webshield_Logger::log(
+                            sprintf(
+                                /* translators: 1: Plugin name, 2: Vulnerability title */
+                                __('CRITICAL: Known vulnerability found in plugin %1$s: %2$s', 'metzler-webshield'),
+                                $name,
+                                $title
+                            ), 
+                            "plugins", 
+                            "critical" 
+                        );
+                    }
+                }
+                
+                // 2. Extract checksums from Threat Intel wrapper
+                $checksums_data = isset($data['checksums']) ? $data['checksums'] : $data;
+                
+                if ( isset($checksums_data['files']) && is_array($checksums_data['files']) ) {
                     $plugin_dir = WP_PLUGIN_DIR . '/' . $slug;
                     
                     // 1. Check if core files are modified
-                    foreach ( $data['files'] as $file_name => $hashes ) {
+                    foreach ( $checksums_data['files'] as $file_name => $hashes ) {
                         $local_file = $plugin_dir . '/' . $file_name;
                         
                         if ( file_exists($local_file) ) {
@@ -84,7 +111,7 @@ class Metzler_Webshield_Scanner_Plugins {
                                     $modifications_found++;
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                                    Metzler_Webshield_Logger::log("Plugin-Datei modifiziert: {$name} -> " . esc_html($file_name) . $actions, "plugins", "error");
+                                    Metzler_Webshield_Logger::log(sprintf( __("Plugin file modified: %s -> %s%s", "metzler-webshield"), $name, esc_html($file_name), $actions ), "plugins", "error");
                                 }
                             }
                         }
@@ -107,7 +134,7 @@ class Metzler_Webshield_Scanner_Plugins {
                                 if ( ! $baseline || $baseline->file_hash !== md5_file($local_file) ) {
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">Als sicher markieren</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
-                                    Metzler_Webshield_Logger::log("Kritisch: Unbekannte Datei im Plugin (Rogue File): {$name} -> " . esc_html($relative_path) . $actions, "plugins", "error");
+                                    Metzler_Webshield_Logger::log(sprintf( __("Critical: Unknown file in plugin (Rogue File): %s -> %s%s", "metzler-webshield"), $name, esc_html($relative_path), $actions ), "plugins", "error");
                                 }
                             }
                         }
@@ -117,7 +144,7 @@ class Metzler_Webshield_Scanner_Plugins {
             
             if ( $end >= $total ) {
                 Metzler_Webshield_Logger::log(__("Plugin signature check completed.", "metzler-webshield"), "plugins", "success");
-                return array('complete' => true, 'message' => 'Plugin Scan abgeschlossen');
+                return array('complete' => true, 'message' => __('Plugin scan completed', 'metzler-webshield'));
             }
             
             return array(

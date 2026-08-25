@@ -90,6 +90,7 @@ class Metzler_Webshield {
             if ( ! isset( $data['success'] ) || ! $data['success'] ) {
                 // Token is invalid/revoked! Lock the plugin.
                 delete_option( 'metzler_webshield_is_licensed' );
+                update_option( 'metzler_webshield_enable_telemetry', '0' );
             }
         }
     }
@@ -135,7 +136,7 @@ class Metzler_Webshield {
             }
             
             // Only send to API if Telemetry is enabled
-            if ( get_option('metzler_webshield_enable_telemetry', '1') === '1' ) {
+            if ( get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
                 if ( count($logs) >= 1000 ) {
                     $this->send_telemetry_batch($logs);
                     $logs = array();
@@ -145,7 +146,7 @@ class Metzler_Webshield {
             }
         }
 
-        if ( count($logs) > 0 && get_option('metzler_webshield_enable_telemetry', '1') === '1' ) {
+        if ( count($logs) > 0 && get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
             $this->send_telemetry_batch($logs);
         }
 

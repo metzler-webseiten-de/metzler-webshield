@@ -159,6 +159,16 @@
 .scan-stage.completed .stage-icon::before {
     content: "\f147"; /* dashicons-yes-alt */
 }
+.scan-stage.skipped {
+    color: #dba617;
+    opacity: 0.9;
+}
+.scan-stage.skipped .stage-icon {
+    color: #dba617;
+}
+.scan-stage.skipped .stage-icon::before {
+    content: "\f460"; /* dashicons-minus */
+}
 
 /* Stats Bar */
 .metzler-webshield-stats-bar {
@@ -350,4 +360,24 @@ tr.metzler-webshield-row-resolved button { display: none !important; }
     .metzler-webshield-action-feedback {
         margin-left: 0;
     }
+}
+
+/* Toast Notifications */
+#metzler-webshield-toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    padding: 15px 25px;
+    background: #fff;
+    color: #1d2327;
+    border-left: 4px solid #00a32a;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 999999;
+    display: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+}
+#metzler-webshield-toast.toast-error {
+    border-left-color: #d63638;
 }

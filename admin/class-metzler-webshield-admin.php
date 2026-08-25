@@ -42,8 +42,8 @@ class Metzler_Webshield_Admin {
                 'rechecking'         => __('Checking...', 'metzler-webshield'),
                 'license_valid'      => __('License is valid!', 'metzler-webshield'),
                 'recheck_now'        => __('Recheck license now', 'metzler-webshield'),
-                'license_invalid'    => __('License is invalid or expired. The plugin will be locked now.', 'metzler-webshield'),
-                'confirm_remove'     => __('Do you really want to remove this license? The firewall and scanner will be deactivated.', 'metzler-webshield'),
+                'license_invalid'    => __('License is invalid or expired. Cloud features will be locked now.', 'metzler-webshield'),
+                'confirm_remove'     => __('Do you really want to remove this license? Cloud features like Smart Scan and WAF Rule Sync will be deactivated.', 'metzler-webshield'),
                 'marked_safe'        => __('Marked as safe.', 'metzler-webshield'),
                 'moving'             => __('Moving...', 'metzler-webshield'),
                 'moved_quarantine'   => __('Moved to quarantine.', 'metzler-webshield'),
@@ -60,6 +60,25 @@ class Metzler_Webshield_Admin {
                 'read_error'         => __('Error reading files.', 'metzler-webshield'),
                 'request_error'      => __('Error during request.', 'metzler-webshield'),
                 'invalid_key'        => __('Invalid key.', 'metzler-webshield'),
+                // New UI states
+                'hero_secure'        => __('Your website is secure.', 'metzler-webshield'),
+                'hero_local_secure'  => __('Basic protection active.', 'metzler-webshield'),
+                'hero_guards_active' => __('All background guards are active and up to date.', 'metzler-webshield'),
+                'hero_local_desc'    => __('Activate a free license to unlock Smart Scan & Cloud Features.', 'metzler-webshield'),
+                'hero_risks'         => __('Security risks detected!', 'metzler-webshield'),
+                'hero_risks_scan'    => __('Smart Scan is still running, but issues have already been detected.', 'metzler-webshield'),
+                'hero_check_log'     => __('Please check the security log.', 'metzler-webshield'),
+                'hero_issues_fixed'  => __('All issues have been resolved.', 'metzler-webshield'),
+                'hero_scan_running'  => __('Smart Scan running...', 'metzler-webshield'),
+                'hero_scan_desc'     => __('Analyzing files and databases...', 'metzler-webshield'),
+                'hero_scan_aborted'  => __('Scan aborted', 'metzler-webshield'),
+                'hero_aborted_desc'  => __('The Smart Scan was manually aborted.', 'metzler-webshield'),
+                'hero_issues_found'  => __('Issues have been detected. Please check the log below.', 'metzler-webshield'),
+                'hero_no_threats'    => __('The Smart Scan found no threats.', 'metzler-webshield'),
+                'hero_log_cleared'   => __('The log has been cleared.', 'metzler-webshield'),
+                'init_scan'          => __('Initializing Smart Scan...', 'metzler-webshield'),
+                'confirm_cancel_scan'=> __('Do you really want to cancel the current scan?', 'metzler-webshield'),
+                'confirm_clear_log'  => __('Do you really want to clear the entire security log?', 'metzler-webshield'),
             )
         ));
     }
@@ -130,6 +149,9 @@ class Metzler_Webshield_Admin {
             update_option( 'metzler_webshield_verified_email', $email );
             update_option( 'metzler_webshield_is_licensed', true );
             
+            // Auto-enable telemetry when user opts into the Cloud License
+            update_option( 'metzler_webshield_enable_telemetry', '1' );
+            
             // Save token to file for high-speed WAF access without DB overhead
             $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
             if ( ! is_dir($upload_dir) ) {
@@ -170,6 +192,7 @@ class Metzler_Webshield_Admin {
             wp_send_json_success();
         } else {
             update_option( 'metzler_webshield_is_licensed', false );
+            update_option( 'metzler_webshield_enable_telemetry', '0' );
             wp_send_json_error();
         }
     }
@@ -179,6 +202,7 @@ class Metzler_Webshield_Admin {
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         
         update_option( 'metzler_webshield_is_licensed', false );
+        update_option( 'metzler_webshield_enable_telemetry', '0' );
         delete_option( 'metzler_webshield_license_token' );
         delete_option( 'metzler_webshield_verified_email' );
         

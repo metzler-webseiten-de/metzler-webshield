@@ -127,7 +127,7 @@ class Metzler_Webshield_Scanner_Files {
                             $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
                             $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
                             
-                            Metzler_Webshield_Logger::log("Kritisch: $threat_reason ($relative_path)" . $actions, "files", "error");
+                            Metzler_Webshield_Logger::log(sprintf( __("Critical: %1$s (%s)%3$s", "metzler-webshield"), $threat_reason, $relative_path, $actions ), "files", "error");
                         }
                     }
                 }
@@ -135,13 +135,13 @@ class Metzler_Webshield_Scanner_Files {
             
             if ( $end >= $total ) {
                 Metzler_Webshield_Logger::log(__("Deep scan of the file system completed.", "metzler-webshield"), "files", "success");
-                return array('complete' => true, 'message' => 'Tiefenscan abgeschlossen');
+                return array('complete' => true, 'message' => __('Deep scan completed.', 'metzler-webshield'));
             }
             
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'directories' => $directories, 'index' => $end),
-                'message' => 'Scanne Verzeichnisse (' . $end . '/' . $total . ')...'
+                'message' => sprintf(__('Scanning directories (%d/%d)...', 'metzler-webshield'), $end, $total)
             );
         }
         
@@ -164,7 +164,7 @@ class Metzler_Webshield_Scanner_Files {
                 }
             }
         } catch (Exception $e) {
-            Metzler_Webshield_Logger::log(__("Could not read directory: ", "metzler-webshield") . $e->getMessage(), "files", "warning");
+            Metzler_Webshield_Logger::log(sprintf( __("Could not read directory: %s", "metzler-webshield"), $e->getMessage() ), "files", "warning");
         }
         
         return $dirs;

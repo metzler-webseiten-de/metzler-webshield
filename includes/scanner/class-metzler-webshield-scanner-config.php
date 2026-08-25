@@ -12,7 +12,7 @@ class Metzler_Webshield_Scanner_Config {
             if ( version_compare($php_version, '8.0', '<') ) {
                 Metzler_Webshield_Logger::log("Sicherheitsrisiko: Sehr alte PHP Version im Einsatz ($php_version). Bitte auf mindestens PHP 8.0 aktualisieren.", "config", "warning");
             } else {
-                Metzler_Webshield_Logger::log("PHP Version ist aktuell ($php_version).", "config", "success");
+                Metzler_Webshield_Logger::log(sprintf( __("PHP version is up to date (%s).", "metzler-webshield"), $php_version ), "config", "success");
             }
             
             // 2. WP_DEBUG Mode
@@ -38,12 +38,12 @@ class Metzler_Webshield_Scanner_Config {
                 // Standard secure perms are 0644, 0640, 0600, 0444, 0440, 0400
                 $insecure_perms = array('0777', '0666', '0755');
                 if ( in_array($perms, $insecure_perms) ) {
-                    Metzler_Webshield_Logger::log("Sicherheitsrisiko: wp-config.php hat unsichere Dateirechte ($perms). Empfohlen wird 0644 oder 0400.", "config", "warning");
+                    Metzler_Webshield_Logger::log(sprintf( __("Security risk: wp-config.php has insecure file permissions (%s). Recommended is 0644 or 0400.", "metzler-webshield"), $perms ), "config", "warning");
                 }
             }
             
             Metzler_Webshield_Logger::log(__("Config & Hardening check completed.", "metzler-webshield"), "config", "success");
-            return array('complete' => true, 'message' => 'Hardening Scan abgeschlossen');
+            return array('complete' => true, 'message' => __('Hardening scan completed', 'metzler-webshield'));
         }
         
         return array('complete' => true);

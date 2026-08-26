@@ -56,6 +56,7 @@ class Metzler_Webshield_Scanner_Plugins {
                 ) );
                 
                 if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+                    /* translators: %s: Plugin name */
                     Metzler_Webshield_Logger::log(sprintf( __("No wp.org signature available for plugin: %s", "metzler-webshield"), $name ), "plugins" );
                     continue;
                 }
@@ -111,7 +112,8 @@ class Metzler_Webshield_Scanner_Plugins {
                                     $modifications_found++;
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
-                                    Metzler_Webshield_Logger::log(sprintf( __("Plugin file modified: %s -> %s%s", "metzler-webshield"), $name, esc_html($file_name), $actions ), "plugins", "error");
+                                    /* translators: 1: plugin name, 2: file name, 3: action buttons */
+                                    Metzler_Webshield_Logger::log(sprintf( __('Plugin file modified: %1$s -> %2$s%3$s', 'metzler-webshield'), $name, esc_html($file_name), $actions ), "plugins", "error");
                                 }
                             }
                         }
@@ -134,7 +136,8 @@ class Metzler_Webshield_Scanner_Plugins {
                                 if ( ! $baseline || $baseline->file_hash !== md5_file($local_file) ) {
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
-                                    Metzler_Webshield_Logger::log(sprintf( __("Critical: Unknown file in plugin (Rogue File): %s -> %s%s", "metzler-webshield"), $name, esc_html($relative_path), $actions ), "plugins", "error");
+                                    /* translators: 1: plugin name, 2: file name, 3: action buttons */
+                                    Metzler_Webshield_Logger::log(sprintf( __('Critical: Unknown file in plugin (Rogue File): %1$s -> %2$s%3$s', 'metzler-webshield'), $name, esc_html($relative_path), $actions ), "plugins", "error");
                                 }
                             }
                         }
@@ -150,6 +153,7 @@ class Metzler_Webshield_Scanner_Plugins {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'plugins' => $plugins, 'index' => $end),
+                /* translators: 1: current index, 2: total plugins */
                 'message' => sprintf(__('Checking plugins (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }

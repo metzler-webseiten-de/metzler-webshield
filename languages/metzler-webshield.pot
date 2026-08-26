@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-26T22:23:47+00:00\n"
+"POT-Creation-Date: 2026-08-26T22:36:47+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: metzler-webshield\n"
@@ -99,7 +99,7 @@ msgid "Error deleting user."
 msgstr ""
 
 #: admin/class-metzler-webshield-admin.php:49
-#: includes/scanner/class-metzler-webshield-scanner-config.php:53
+#: includes/scanner/class-metzler-webshield-scanner-config.php:57
 msgid "Delete user"
 msgstr ""
 
@@ -130,9 +130,9 @@ msgstr ""
 #: admin/class-metzler-webshield-admin.php:56
 #: includes/scanner/class-metzler-webshield-scanner-files.php:141
 #: includes/scanner/class-metzler-webshield-scanner-fim.php:58
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:63
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:113
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:136
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:64
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:114
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:138
 msgid "Move to quarantine"
 msgstr ""
 
@@ -259,86 +259,87 @@ msgstr ""
 msgid "Do you really want to clear the entire security log?"
 msgstr ""
 
+#. translators: %d: number of remaining logs
 #. translators: %d: number of hidden events
-#: admin/class-metzler-webshield-admin.php:87
+#: admin/class-metzler-webshield-admin.php:88
 #: admin/views/view-dashboard.php:141
 #, php-format
 msgid "... and %d more (see log)."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:88
+#: admin/class-metzler-webshield-admin.php:89
 #: admin/views/view-dashboard.php:198
 msgid "The log is empty."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:89
+#: admin/class-metzler-webshield-admin.php:90
 msgid "Updating..."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:90
+#: admin/class-metzler-webshield-admin.php:91
 msgid "✔ Successfully updated"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:91
+#: admin/class-metzler-webshield-admin.php:92
 msgid "Error during update"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:92
+#: admin/class-metzler-webshield-admin.php:93
 msgid "An error occurred."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:93
+#: admin/class-metzler-webshield-admin.php:94
 msgid "Scan aborted: "
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:94
+#: admin/class-metzler-webshield-admin.php:95
 msgid "Connection problem. Retrying..."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:95
+#: admin/class-metzler-webshield-admin.php:96
 msgid "Creating baseline..."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:96
+#: admin/class-metzler-webshield-admin.php:97
 msgid "Set FIM Baseline"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:97
+#: admin/class-metzler-webshield-admin.php:98
 msgid "Saving..."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:112
+#: admin/class-metzler-webshield-admin.php:113
 msgid "Invalid email address."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:126
-#: admin/class-metzler-webshield-admin.php:157
+#: admin/class-metzler-webshield-admin.php:127
+#: admin/class-metzler-webshield-admin.php:158
 msgid "API connection error:"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:133
+#: admin/class-metzler-webshield-admin.php:134
 msgid "License key requested!"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:135
+#: admin/class-metzler-webshield-admin.php:136
 msgid "Error:"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:135
+#: admin/class-metzler-webshield-admin.php:136
 #: admin/views/view-dashboard.php:164
 #: includes/waf/class-metzler-webshield-waf.php:237
 msgid "Unknown"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:179
+#: admin/class-metzler-webshield-admin.php:180
 msgid "License verified!"
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:181
+#: admin/class-metzler-webshield-admin.php:182
 msgid "Invalid license key."
 msgstr ""
 
-#: admin/class-metzler-webshield-admin.php:228
+#: admin/class-metzler-webshield-admin.php:229
 msgid "License removed."
 msgstr ""
 
@@ -709,12 +710,14 @@ msgstr ""
 msgid "Access denied. Suspicious bot activity detected. Please enable JavaScript."
 msgstr ""
 
-#: includes/class-metzler-webshield-quarantine.php:77
+#. translators: %s: file path
+#: includes/class-metzler-webshield-quarantine.php:78
 #, php-format
 msgid "File moved to quarantine: %s"
 msgstr ""
 
-#: includes/class-metzler-webshield-quarantine.php:96
+#. translators: %s: file path
+#: includes/class-metzler-webshield-quarantine.php:98
 #, php-format
 msgid "File restored from quarantine: %s"
 msgstr ""
@@ -753,68 +756,71 @@ msgstr ""
 msgid "Log cleared."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:212
+#. translators: %d: number of files
+#: includes/class-metzler-webshield-queue.php:213
 #, php-format
 msgid "Baseline successfully created with %d files."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:221
+#: includes/class-metzler-webshield-queue.php:222
 msgid "The Smart Scan was aborted by the user."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:235
+#. translators: %s: file path
+#: includes/class-metzler-webshield-queue.php:237
 #, php-format
 msgid "File marked as safe: %s"
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:248
+#: includes/class-metzler-webshield-queue.php:250
 msgid "You cannot delete yourself!"
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:253
+#. translators: %d: user id
+#: includes/class-metzler-webshield-queue.php:256
 #, php-format
 msgid "Ghost Admin (ID %d) was successfully deleted."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:256
+#: includes/class-metzler-webshield-queue.php:259
 msgid "Could not delete user."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:273
+#: includes/class-metzler-webshield-queue.php:276
 msgid "Could not move file to quarantine. (Permissions?)"
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:287
+#: includes/class-metzler-webshield-queue.php:290
 msgid "Error during restoration."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:300
+#: includes/class-metzler-webshield-queue.php:303
 msgid "Error during deletion."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:351
+#: includes/class-metzler-webshield-queue.php:354
 msgid "Automatic background scan (cron) started..."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:405
+#: includes/class-metzler-webshield-queue.php:408
 msgid "Cron scan paused (time limit reached). It will resume on the next run."
 msgstr ""
 
-#: includes/class-metzler-webshield-queue.php:411
+#: includes/class-metzler-webshield-queue.php:414
 msgid "Automatic background scan completed successfully."
 msgstr ""
 
-#: includes/class-metzler-webshield.php:220
+#: includes/class-metzler-webshield.php:221
 #, php-format
 msgid "WAF Block: 1 attack from IP %1$s (%2$s) prevented."
 msgstr ""
 
-#: includes/class-metzler-webshield.php:222
+#: includes/class-metzler-webshield.php:223
 #, php-format
 msgid "WAF Block: %1$d attacks from IP %2$s (%3$s) prevented."
 msgstr ""
 
-#: includes/class-metzler-webshield.php:329
+#: includes/class-metzler-webshield.php:330
 msgid "WAF rules successfully synchronized from Threat Intelligence Cloud."
 msgstr ""
 
@@ -822,92 +828,93 @@ msgstr ""
 msgid "Starting Config & Hardening checks..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:13
+#. translators: %s: PHP version
+#: includes/scanner/class-metzler-webshield-scanner-config.php:14
 #, php-format
 msgid "Security risk: Very old PHP version in use (%s). Please update to at least PHP 8.0."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:15
+#. translators: %s: PHP version
+#: includes/scanner/class-metzler-webshield-scanner-config.php:17
 #, php-format
 msgid "PHP version is up to date (%s)."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:20
+#: includes/scanner/class-metzler-webshield-scanner-config.php:22
 msgid "Critical: WP_DEBUG is enabled. This can reveal server paths and vulnerabilities to attackers. Please disable it in wp-config.php."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:26
+#: includes/scanner/class-metzler-webshield-scanner-config.php:28
 msgid "Critical: A user named 'admin' exists. This is the main target for brute-force attacks. Please rename or delete it."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:52
-#, php-format
-msgid "CRITICAL MALWARE ALERT: Ghost Admin detected! User '%s' (ID %d) has Administrator privileges in the database but is actively hidden from WordPress by malware!"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-config.php:59
+#: includes/scanner/class-metzler-webshield-scanner-config.php:63
 msgid "Ghost Admin Check passed: No hidden administrators found."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:74
+#. translators: %s: file permissions
+#: includes/scanner/class-metzler-webshield-scanner-config.php:79
 #, php-format
 msgid "Security risk: wp-config.php has insecure file permissions (%s). Recommended is 0644 or 0400."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:78
+#: includes/scanner/class-metzler-webshield-scanner-config.php:83
 msgid "Config & Hardening check completed."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-config.php:79
+#: includes/scanner/class-metzler-webshield-scanner-config.php:84
 msgid "Hardening scan completed"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:11
+#. translators: 1: WordPress version, 2: Locale
+#: includes/scanner/class-metzler-webshield-scanner-core.php:12
 #, php-format
 msgid "Loading Core checksums for WordPress %1$s (%2$s) from WordPress.org..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:24
+#: includes/scanner/class-metzler-webshield-scanner-core.php:25
 msgid "Error retrieving Core checksums."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:34
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:69
+#: includes/scanner/class-metzler-webshield-scanner-core.php:35
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:70
 msgid "Unknown vulnerability"
 msgstr ""
 
 #. translators: %s: Vulnerability title
-#: includes/scanner/class-metzler-webshield-scanner-core.php:38
+#: includes/scanner/class-metzler-webshield-scanner-core.php:39
 #, php-format
 msgid "CRITICAL: Known Core vulnerability found: %s"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:60
+#: includes/scanner/class-metzler-webshield-scanner-core.php:61
 msgid "Invalid response from WordPress.org API."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:79
+#: includes/scanner/class-metzler-webshield-scanner-core.php:80
 msgid "Core checksums loaded. Starting file check..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:90
+#: includes/scanner/class-metzler-webshield-scanner-core.php:91
 msgid "Error: Checksums lost in cache."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:118
+#. translators: %s: file path
+#: includes/scanner/class-metzler-webshield-scanner-core.php:120
 #, php-format
 msgid "Core file modified: %s"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:124
+#: includes/scanner/class-metzler-webshield-scanner-core.php:126
 msgid "WordPress Core file check completed."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:126
+#: includes/scanner/class-metzler-webshield-scanner-core.php:128
 msgid "Core scan completed"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-core.php:132
+#. translators: 1: current index, 2: total files
+#: includes/scanner/class-metzler-webshield-scanner-core.php:135
 #, php-format
 msgid "Checking core files (%1$d/%2$d)..."
 msgstr ""
@@ -990,31 +997,34 @@ msgstr ""
 
 #: includes/scanner/class-metzler-webshield-scanner-files.php:140
 #: includes/scanner/class-metzler-webshield-scanner-fim.php:57
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:62
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:112
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:135
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:63
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:113
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:137
 msgid "Mark as safe"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-files.php:143
+#. translators: 1: threat reason, 2: file path, 3: action buttons
+#: includes/scanner/class-metzler-webshield-scanner-files.php:144
 #, php-format
 msgid "Critical: %1$s (%2$s)%3$s"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-files.php:150
+#: includes/scanner/class-metzler-webshield-scanner-files.php:151
 msgid "Deep scan of the file system completed."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-files.php:151
+#: includes/scanner/class-metzler-webshield-scanner-files.php:152
 msgid "Deep scan completed."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-files.php:157
+#. translators: 1: current index, 2: total directories
+#: includes/scanner/class-metzler-webshield-scanner-files.php:159
 #, php-format
-msgid "Scanning directories (%d/%d)..."
+msgid "Scanning directories (%1$d/%2$d)..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-files.php:180
+#. translators: %s: error message
+#: includes/scanner/class-metzler-webshield-scanner-files.php:183
 #, php-format
 msgid "Could not read directory: %s"
 msgstr ""
@@ -1035,26 +1045,18 @@ msgstr ""
 msgid "FIM scanner running..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:59
-#, php-format
-msgid "FIM Alert: New, unknown file found -> %s%s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:64
-#, php-format
-msgid "FIM Alert: File modified after snapshot -> %s%s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:69
+#. translators: %d: number of files checked
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:72
 #, php-format
 msgid "File Integrity Monitoring completed. (Checked: %d files)"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:70
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:73
 msgid "FIM scan completed"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-fim.php:76
+#. translators: 1: current index, 2: total files
+#: includes/scanner/class-metzler-webshield-scanner-fim.php:80
 #, php-format
 msgid "FIM scan (%1$d/%2$d)..."
 msgstr ""
@@ -1067,36 +1069,28 @@ msgstr ""
 msgid "Loading plugin signatures..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:59
+#. translators: %s: Plugin name
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:60
 #, php-format
 msgid "No wp.org signature available for plugin: %s"
 msgstr ""
 
 #. translators: 1: Plugin name, 2: Vulnerability title
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:73
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:74
 #, php-format
 msgid "CRITICAL: Known vulnerability found in plugin %1$s: %2$s"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:114
-#, php-format
-msgid "Plugin file modified: %s -> %s%s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:137
-#, php-format
-msgid "Critical: Unknown file in plugin (Rogue File): %s -> %s%s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:146
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:149
 msgid "Plugin signature check completed."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:147
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:150
 msgid "Plugin scan completed"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-plugins.php:153
+#. translators: 1: current index, 2: total plugins
+#: includes/scanner/class-metzler-webshield-scanner-plugins.php:157
 #, php-format
 msgid "Checking plugins (%1$d/%2$d)..."
 msgstr ""
@@ -1113,47 +1107,33 @@ msgstr ""
 msgid "Run Core Update"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:26
-#, php-format
-msgid "Outdated WordPress version. Recommended: Update to %s %s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:33
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:34
 msgid "WordPress Core is up to date."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:39
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:40
 msgid "Checking plugin updates..."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:57
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:58
 msgid "Update Plugin"
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:58
-#, php-format
-msgid "Outdated plugin: %s (New version available) %s"
-msgstr ""
-
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:63
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:65
 msgid "All plugins are up to date."
 msgstr ""
 
-#: includes/scanner/class-metzler-webshield-scanner-updates.php:66
+#: includes/scanner/class-metzler-webshield-scanner-updates.php:68
 msgid "Update check completed"
 msgstr ""
 
-#: includes/waf/class-metzler-webshield-waf-installer.php:15
+#. translators: %s: Directory path
+#: includes/waf/class-metzler-webshield-waf-installer.php:16
 #, php-format
 msgid "WAF Installation failed: Could not create mu-plugins directory (%s)"
 msgstr ""
 
-#: includes/waf/class-metzler-webshield-waf-installer.php:46
-#, php-format
-msgid "WAF Installation failed: Could not write file (%s). Error: %s"
-msgstr ""
-
-#: includes/waf/class-metzler-webshield-waf-installer.php:50
+#: includes/waf/class-metzler-webshield-waf-installer.php:52
 msgid "WAF MU-Plugin installed successfully."
 msgstr ""
 

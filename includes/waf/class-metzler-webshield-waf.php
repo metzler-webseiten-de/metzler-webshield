@@ -21,7 +21,7 @@ class Metzler_Webshield_WAF {
         
         $client_ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $server_ip = $_SERVER['SERVER_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-        $host_ip = isset($_SERVER['HTTP_HOST']) ? gethostbyname($_SERVER['HTTP_HOST']) : '';
+        $host_ip = isset($_SERVER['HTTP_HOST']) ? gethostbyname(sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST']))) : '';
         $is_loopback = !empty($client_ip) && ($client_ip === $server_ip || $client_ip === $host_ip || $client_ip === '127.0.0.1' || $client_ip === '::1');
         
         $script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput

@@ -10,8 +10,10 @@ class Metzler_Webshield_Scanner_Config {
             // 1. PHP Version
             $php_version = phpversion();
             if ( version_compare($php_version, '8.0', '<') ) {
+                /* translators: %s: PHP version */
                 Metzler_Webshield_Logger::log(sprintf(__("Security risk: Very old PHP version in use (%s). Please update to at least PHP 8.0.", "metzler-webshield"), $php_version), "config", "warning");
             } else {
+                /* translators: %s: PHP version */
                 Metzler_Webshield_Logger::log(sprintf( __("PHP version is up to date (%s).", "metzler-webshield"), $php_version ), "config", "success");
             }
             
@@ -28,6 +30,7 @@ class Metzler_Webshield_Scanner_Config {
             
                         // 3.5 Ghost Admin Check
             global $wpdb;
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $raw_admins = $wpdb->get_results("
                 SELECT u.ID, u.user_login 
                 FROM {$wpdb->users} u
@@ -49,7 +52,8 @@ class Metzler_Webshield_Scanner_Config {
             if (!empty($ghost_admins)) {
                 foreach ($raw_admins as $admin) {
                     if (in_array((int)$admin->ID, $ghost_admins)) {
-                        $ghost_msg = sprintf(__("CRITICAL MALWARE ALERT: Ghost Admin detected! User '%s' (ID %d) has Administrator privileges in the database but is actively hidden from WordPress by malware!", "metzler-webshield"), $admin->user_login, $admin->ID);
+                        /* translators: 1: username, 2: user id */
+                        $ghost_msg = sprintf(__('CRITICAL MALWARE ALERT: Ghost Admin detected! User \'%1$s\' (ID %2$d) has Administrator privileges in the database but is actively hidden from WordPress by malware!', 'metzler-webshield'), $admin->user_login, $admin->ID);
                         $ghost_msg .= '<br><button type="button" class="button button-small button-primary metzler-webshield-delete-user" data-user-id="'.esc_attr($admin->ID).'" style="background:#d63638;border-color:#d63638;">'.esc_html__('Delete user', 'metzler-webshield').'</button>';
                         Metzler_Webshield_Logger::log($ghost_msg, "config", "error");
                         continue;
@@ -71,6 +75,7 @@ class Metzler_Webshield_Scanner_Config {
                 // Standard secure perms are 0644, 0640, 0600, 0444, 0440, 0400
                 $insecure_perms = array('0777', '0666', '0755');
                 if ( in_array($perms, $insecure_perms) ) {
+                    /* translators: %s: file permissions */
                     Metzler_Webshield_Logger::log(sprintf( __("Security risk: wp-config.php has insecure file permissions (%s). Recommended is 0644 or 0400.", "metzler-webshield"), $perms ), "config", "warning");
                 }
             }

@@ -8,6 +8,7 @@ class Metzler_Webshield_Scanner_Core {
             global $wp_version;
             $locale = get_locale();
             
+            /* translators: 1: WordPress version, 2: Locale */
             Metzler_Webshield_Logger::log(sprintf( __('Loading Core checksums for WordPress %1$s (%2$s) from WordPress.org...', 'metzler-webshield'), $wp_version, $locale ), "core" );
             
             $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
@@ -115,6 +116,7 @@ class Metzler_Webshield_Scanner_Core {
                     }
                     
                     if ( ! $is_valid ) {
+                        /* translators: %s: file path */
                         Metzler_Webshield_Logger::log(sprintf( __("Core file modified: %s", "metzler-webshield"), esc_html($file) ), "core", "error");
                     }
                 }
@@ -129,6 +131,7 @@ class Metzler_Webshield_Scanner_Core {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'files' => $files, 'index' => $end),
+                /* translators: 1: current index, 2: total files */
                 'message' => sprintf(__('Checking core files (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }

@@ -23,7 +23,8 @@ class Metzler_Webshield_Scanner_Updates {
                     if ( $update->response === 'upgrade' ) {
                         $has_core_update = true;
                         $button = '<button class="button button-small metzler-webshield-update-btn" data-update-type="core" data-update-item="core">' . esc_html__('Run Core Update', 'metzler-webshield') . '</button>';
-                        Metzler_Webshield_Logger::log(sprintf( __("Outdated WordPress version. Recommended: Update to %s %s", "metzler-webshield"), esc_html($update->version), $button ), "updates", "warning");
+                        /* translators: 1: New version number, 2: HTML button */
+                        Metzler_Webshield_Logger::log(sprintf( __('Outdated WordPress version. Recommended: Update to %1$s %2$s', 'metzler-webshield'), esc_html($update->version), $button ), "updates", "warning");
                         break;
                     }
                 }
@@ -55,7 +56,8 @@ class Metzler_Webshield_Scanner_Updates {
                     $plugin_name = isset($all_plugins[$plugin_file]) ? $all_plugins[$plugin_file]['Name'] : $plugin_file;
                     
                     $button = '<button class="button button-small metzler-webshield-update-btn" data-update-type="plugin" data-update-item="' . esc_attr($plugin_file) . '">' . esc_html__('Update Plugin', 'metzler-webshield') . '</button>';
-                    Metzler_Webshield_Logger::log(sprintf( __("Outdated plugin: %s (New version available) %s", "metzler-webshield"), esc_html($plugin_name), $button ), "updates", "warning");
+                    /* translators: 1: Plugin name, 2: HTML button */
+                    Metzler_Webshield_Logger::log(sprintf( __('Outdated plugin: %1$s (New version available) %2$s', 'metzler-webshield'), esc_html($plugin_name), $button ), "updates", "warning");
                 }
             }
             

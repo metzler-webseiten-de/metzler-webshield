@@ -140,6 +140,7 @@ class Metzler_Webshield_Scanner_Files {
                             $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                             $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                             
+                            /* translators: 1: threat reason, 2: file path, 3: action buttons */
                             Metzler_Webshield_Logger::log(sprintf( __('Critical: %1$s (%2$s)%3$s', 'metzler-webshield'), $threat_reason, $relative_path, $actions ), "files", "error");
                         }
                     }
@@ -154,7 +155,8 @@ class Metzler_Webshield_Scanner_Files {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'directories' => $directories, 'index' => $end),
-                'message' => sprintf(__('Scanning directories (%d/%d)...', 'metzler-webshield'), $end, $total)
+                /* translators: 1: current index, 2: total directories */
+                'message' => sprintf(__('Scanning directories (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }
         
@@ -177,6 +179,7 @@ class Metzler_Webshield_Scanner_Files {
                 }
             }
         } catch (Exception $e) {
+            /* translators: %s: error message */
             Metzler_Webshield_Logger::log(sprintf( __("Could not read directory: %s", "metzler-webshield"), $e->getMessage() ), "files", "warning");
         }
         

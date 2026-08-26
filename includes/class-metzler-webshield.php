@@ -100,12 +100,13 @@ class Metzler_Webshield {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_logs';
         
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $results = $wpdb->get_results("SELECT * FROM $table_name WHERE type = 'waf'");
         if (empty($results)) return;
 
         $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
         if (!file_exists($upload_dir)) {
-            @mkdir($upload_dir, 0755, true);
+            wp_mkdir_p($upload_dir);
         }
         $telemetry_file = $upload_dir . '/telemetry.jsonl';
 

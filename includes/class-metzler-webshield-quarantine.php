@@ -74,6 +74,7 @@ class Metzler_Webshield_Quarantine {
                 'time' => current_time('mysql')
             ));
             
+            /* translators: %s: file path */
             Metzler_Webshield_Logger::log(sprintf( __("File moved to quarantine: %s", "metzler-webshield"), esc_html($relative_path) ), "system", "success");
             return true;
         }
@@ -93,6 +94,7 @@ class Metzler_Webshield_Quarantine {
                 wp_mkdir_p(dirname($dest_path));
                 if ( rename($source_path, $dest_path) ) { // phpcs:ignore
                     $wpdb->delete($table_name, array('id' => $id)); // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+                    /* translators: %s: file path */
                     Metzler_Webshield_Logger::log(sprintf( __("File restored from quarantine: %s", "metzler-webshield"), esc_html($record->original_path) ), "system" );
                     return true;
                 }

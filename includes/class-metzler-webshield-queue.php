@@ -209,6 +209,7 @@ class Metzler_Webshield_Queue {
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         $fim = new Metzler_Webshield_FIM();
         $count = $fim->build_baseline();
+        /* translators: %d: number of files */
         wp_send_json_success(array('message' => sprintf(__('Baseline successfully created with %d files.', 'metzler-webshield'), $count)));
     }
 
@@ -232,6 +233,7 @@ class Metzler_Webshield_Queue {
         $fim->accept_file($path);
         
         Metzler_Webshield_Logger::resolve_path_logs($path); // Delete old warnings
+        /* translators: %s: file path */
         Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");
         
         wp_send_json_success();
@@ -250,6 +252,7 @@ class Metzler_Webshield_Queue {
         
         require_once(ABSPATH.'wp-admin/includes/user.php');
         if ( wp_delete_user($user_id) ) {
+            /* translators: %d: user id */
             Metzler_Webshield_Logger::log(sprintf(__("Ghost Admin (ID %d) was successfully deleted.", "metzler-webshield"), $user_id), "config", "success");
             wp_send_json_success();
         } else {

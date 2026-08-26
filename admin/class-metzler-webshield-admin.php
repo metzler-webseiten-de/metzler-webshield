@@ -84,6 +84,7 @@ class Metzler_Webshield_Admin {
                 'init_scan'          => __('Initializing Smart Scan...', 'metzler-webshield'),
                 'confirm_cancel_scan'=> __('Do you really want to cancel the current scan?', 'metzler-webshield'),
                 'confirm_clear_log'  => __('Do you really want to clear the entire security log?', 'metzler-webshield'),
+                /* translators: %d: number of remaining logs */
                 'more_logs'          => __('... and %d more (see log).', 'metzler-webshield'),
                 'log_empty'          => __('The log is empty.', 'metzler-webshield'),
                 'updating'           => __('Updating...', 'metzler-webshield'),

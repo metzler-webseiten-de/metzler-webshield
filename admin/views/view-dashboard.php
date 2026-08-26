@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     $is_licensed = get_option('metzler_webshield_is_licensed', false); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     $active_tab_class = 'nav-tab-active'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     $license_tab_active = ''; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $fim_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}metzler_webshield_files"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $metzler_webshield_fim_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}metzler_webshield_files"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     ?>
     <nav class="nav-tab-wrapper metzler-webshield-nav-tabs" style="margin-bottom: 20px;">
         <a href="#tab-dashboard" class="nav-tab <?php echo esc_attr($active_tab_class); ?> metzler-webshield-tab-link" data-tab="tab-dashboard"><?php echo esc_html__("Overview", "metzler-webshield"); ?></a>
@@ -103,7 +103,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         <div class="stat-item">
             <span class="dashicons dashicons-yes-alt"></span>
             <div class="stat-text">
-                <strong id="stat-files-scanned"><?php echo esc_html(number_format_i18n((int)$fim_count)); ?></strong>
+                <strong id="stat-files-scanned"><?php echo esc_html(number_format_i18n((int)$metzler_webshield_fim_count)); ?></strong>
                 <span><?php echo esc_html__("Scanned Files", "metzler-webshield"); ?></span>
             </div>
         </div>
@@ -311,11 +311,11 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
                             </label>
                             <?php
                             global $wpdb;
-                            $fim_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}metzler_webshield_fim"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
+                            $metzler_webshield_fim_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}metzler_webshield_fim"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
                             ?>
                             <p class="metzler-webshield-stat-highlight"><?php echo 
 /* translators: %d: number of files */
-sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshield"), intval($fim_count)); ?></p>
+sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshield"), intval($metzler_webshield_fim_count)); ?></p>
                             <p class="description">
                                 <?php echo esc_html__("The FIM (File Integrity Monitoring) module creates a fingerprint of all files on your server during the first start.", "metzler-webshield"); ?>
                                 <?php echo esc_html__("If a file is changed afterwards without an official update (e.g. through a hacker upload via FTP), the system immediately triggers an alarm.", "metzler-webshield"); ?>
@@ -443,5 +443,4 @@ sprintf(wp_kses_post(__("Your domain <strong>%s</strong> is successfully license
     <div style="clear:both; height:80px; width:100%;"></div>
     
 </div>
-
 

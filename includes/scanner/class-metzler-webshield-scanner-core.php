@@ -47,14 +47,22 @@ class Metzler_Webshield_Scanner_Core {
             // 2. Extract checksums from Threat Intel wrapper
             $api_data = isset($data['checksums']) ? $data['checksums'] : $data;
             
-            // wp.org returns an object where checksums might be deeply nested or simple, depending on version, 
-            // but for 1.0 it is usually $api_data['checksums']
-            if ( ! isset($api_data['checksums']) || ! is_array($api_data['checksums']) ) {
-                Metzler_Webshield_Logger::log(__("Invalid response from WordPress.org API.", "metzler-webshield"), "core", "error");
-                return array('complete' => true);
+            // Handle offers wrapper from wp.org if passed through raw
+            if ( isset($api_data['offers']) && is_array($api_data['offers']) && !empty($api_data['offers']) ) {
+                $api_data = $api_data['offers'][0];
             }
             
-            $checksums = $api_data['checksums'];
+            if ( ! isset($api_data['checksums']) || ! is_array($api_data['checksums']) ) {
+                // Check if api_data IS the checksum array directly (no wrapper)
+                if ( is_array($api_data) && !empty($api_data) && !isset($api_data['checksums']) && !isset($api_data['offers']) ) {
+                    $checksums = $api_data;
+                } else {
+                    Metzler_Webshield_Logger::log(__("Invalid response from WordPress.org API.", "metzler-webshield"), "core", "error");
+                    return array('complete' => true);
+                }
+            } else {
+                $checksums = $api_data['checksums'];
+            }
             $files = array_keys($checksums);
             
             // wp-content (Plugins, Themes) should not be checked by the core scanner

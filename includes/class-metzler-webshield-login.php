@@ -82,6 +82,22 @@ class Metzler_Webshield_Login {
                 "waf", 
                 "warning"
             );
+
+            // Write brute force to telemetry file
+            $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+            if ( ! file_exists($upload_dir) ) {
+                @mkdir($upload_dir, 0755, true);
+            }
+            $telemetry_data = array(
+                'time' => current_time('mysql'),
+                'domain' => wp_parse_url(home_url(), PHP_URL_HOST),
+                'ip_address' => sanitize_text_field($ip),
+                'attack_type' => 'Brute_Force',
+                'severity' => 'high',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+            );
+            @file_put_contents($upload_dir . '/telemetry.jsonl', json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
             
             return new WP_Error(
                 "metzler_webshield_bot_blocked",

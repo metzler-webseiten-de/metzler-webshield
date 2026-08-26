@@ -19,7 +19,19 @@ class Metzler_Webshield_WAF {
         if ( defined('WP_CLI') && WP_CLI ) return;
         if ( defined('DOING_CRON') && DOING_CRON ) return;
         
-        $this->browser_integrity_check();
+        $client_ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $server_ip = $_SERVER['SERVER_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $host_ip = isset($_SERVER['HTTP_HOST']) ? gethostbyname($_SERVER['HTTP_HOST']) : '';
+        $is_loopback = !empty($client_ip) && ($client_ip === $server_ip || $client_ip === $host_ip || $client_ip === '127.0.0.1' || $client_ip === '::1');
+        
+        $script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $is_cron = (basename($script_name) === 'wp-cron.php');
+        
+        // Only skip browser integrity checks for automated background tasks, 
+        // but KEEP the actual malware payload inspection active for them!
+        if ( ! $is_cron && ! $is_loopback ) {
+            $this->browser_integrity_check();
+        }
         
         $this->inspect_payload($_GET, 'GET'); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $this->inspect_payload($_POST, 'POST'); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
@@ -33,8 +45,8 @@ class Metzler_Webshield_WAF {
             $this->inspect_string( $_SERVER['QUERY_STRING'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
-        // Inspect User-Agent
-        if ( isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots)
+        if ( ! $is_loopback && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $this->inspect_string( $_SERVER['HTTP_USER_AGENT'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
     }

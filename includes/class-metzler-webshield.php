@@ -95,7 +95,64 @@ class Metzler_Webshield {
         }
     }
 
+    
+    private function sync_historical_telemetry(): void {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_logs';
+        
+        $results = $wpdb->get_results("SELECT * FROM $table_name WHERE type = 'waf'");
+        if (empty($results)) return;
+
+        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+        if (!file_exists($upload_dir)) {
+            @mkdir($upload_dir, 0755, true);
+        }
+        $telemetry_file = $upload_dir . '/telemetry.jsonl';
+
+        $domain = wp_parse_url(home_url(), PHP_URL_HOST);
+        
+        foreach ($results as $row) {
+            $ip = '';
+            $attack_type = 'Unknown';
+            
+            // Check if it is a Brute Force log
+            if (strpos($row->message, 'Brute-Force prevented:') !== false) {
+                if (preg_match('/from IP: ([0-9a-fA-F:\.]+) for user:/', $row->message, $matches)) {
+                    $ip = $matches[1];
+                }
+                $attack_type = 'Brute_Force';
+            } 
+            // Check if it is a standard WAF block log
+            else if (preg_match('/WAF Block: \d+ Angriffe? von IP ([0-9a-fA-F:\.]+) \((.*?)\)/', $row->message, $matches)) {
+                $ip = $matches[1];
+                $attack_type = $matches[2]; // Can be multiple types comma separated, but good enough for history
+            }
+            
+            if (!$ip) continue;
+
+            $telemetry_data = array(
+                'time' => $row->time,
+                'domain' => $domain,
+                'ip_address' => sanitize_text_field($ip),
+                'attack_type' => sanitize_text_field($attack_type),
+                'severity' => 'high',
+                'request_uri' => '/historical-sync',
+                'user_agent' => 'Legacy_Log_Export'
+            );
+            
+            @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
+        }
+    }
+
+
     public function cron_sync_telemetry(): void {
+        if ( get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
+            // Only sync history if they actually have a valid license, so Free users don't burn their one-time sync!
+            if ( get_option('metzler_webshield_is_licensed') && get_option('metzler_webshield_historical_telemetry_sent', '0') !== '1' ) {
+                $this->sync_historical_telemetry();
+                update_option('metzler_webshield_historical_telemetry_sent', '1');
+            }
+        }
         $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
         $telemetry_file = $upload_dir . '/telemetry.jsonl';
         $processing_file = $upload_dir . '/telemetry_processing.jsonl';
@@ -123,15 +180,19 @@ class Metzler_Webshield {
             if ( $decoded ) {
                 $logs[] = $decoded;
                 
-                // Aggregate for UI: Group by IP
+                // Aggregate for UI: Group by IP (Skip Legacy/Historical and Brute_Force because they are already in the DB!)
                 $ip = $decoded['ip_address'];
                 $type = $decoded['attack_type'];
-                if ( !isset($ui_summary[$ip]) ) {
-                    $ui_summary[$ip] = array('count' => 0, 'types' => array());
-                }
-                $ui_summary[$ip]['count']++;
-                if ( !in_array($type, $ui_summary[$ip]['types']) ) {
-                    $ui_summary[$ip]['types'][] = $type;
+                $user_agent = $decoded['user_agent'] ?? '';
+                
+                if ( $type !== 'Brute_Force' && $user_agent !== 'Legacy_Log_Export' ) {
+                    if ( !isset($ui_summary[$ip]) ) {
+                        $ui_summary[$ip] = array('count' => 0, 'types' => array());
+                    }
+                    $ui_summary[$ip]['count']++;
+                    if ( !in_array($type, $ui_summary[$ip]['types']) ) {
+                        $ui_summary[$ip]['types'][] = $type;
+                    }
                 }
             }
             

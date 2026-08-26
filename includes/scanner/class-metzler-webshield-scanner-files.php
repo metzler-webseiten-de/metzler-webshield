@@ -46,14 +46,23 @@ class Metzler_Webshield_Scanner_Files {
             
             // Malware Signatures (Heuristics) - Obfuscated in code to prevent self-detection (False Positive on scanner itself)
             $malware_patterns = array(
-                'eval\s*\(\s*base64_decode\s*\(' => 'Base64-kodierte Backdoor (Dropper)',
-                'preg_replace\s*\(\s*[\'"](.)(.*?)\\\\1[a-z]*e[a-z]*[\'"]' => 'Veraltete preg_replace Injection (/e Modifikator)',
-                'FilesM[a]n' => 'Web-Shell Signatur (WSO/F-Man)',
-                'b37[4]k' => 'Web-Shell Signatur (b3-74k)',
-                '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => 'Versteckte Variable-Function Injection',
+                // 1. Generic Obfuscation & Dynamic Execution
+                '\\$[a-zA-Z_-ÿ][a-zA-Z0-9_-ÿ]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
+                'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)' => __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield'),
+                '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))' => __('Dangerous system commands with user input', 'metzler-webshield'),
+                'file_put_contents\s*\(\s*.*?\s*,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'),
+                'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode' => __('Gzuncompress/Base64 obfuscation', 'metzler-webshield'),
+                'preg_replace\s*\(\s*["\'\']\/(.*?)\/e["\'\']' => __('preg_replace /e code execution', 'metzler-webshield'),
+                'assert\s*\(\s*base64_decode' => __('Assert Base64 code execution', 'metzler-webshield'),
+                // 2. Legacy/Specific Signatures
+                'eval\s*\(\s*base64_decode\s*\(' => __('Base64-encoded backdoor (Dropper)', 'metzler-webshield'),
+                'preg_replace\s*\(\s*[\'"](.)(.*?)\\\\1[a-z]*e[a-z]*[\'"]' => __('Deprecated preg_replace injection (/e modifier)', 'metzler-webshield'),
+                'FilesM[a]n' => __('Web Shell signature (WSO/F-Man)', 'metzler-webshield'),
+                'b37[4]k' => __('Web Shell signature (b3-74k)', 'metzler-webshield'),
+                '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => __('Hidden variable-function injection', 'metzler-webshield'),
                 '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => 'Direkte POST-Payload AusfÃ¼hrung', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-                'assert\s*\(\s*\\$_' => 'Assert Injection (PHP <= 7.1)',
-                'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => 'Komprimierte Base64 Backdoor'
+                'assert\s*\(\s*\\$_' => __('Assert injection (PHP <= 7.1)', 'metzler-webshield'),
+                'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => __('Compressed Base64 backdoor', 'metzler-webshield')
             );
             
             for ( $i = $index; $i < $end; $i++ ) {

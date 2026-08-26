@@ -26,6 +26,39 @@ class Metzler_Webshield_Scanner_Config {
                 Metzler_Webshield_Logger::log(__("Critical: A user named 'admin' exists. This is the main target for brute-force attacks. Please rename or delete it.", "metzler-webshield"), "config", "error");
             }
             
+                        // 3.5 Ghost Admin Check
+            global $wpdb;
+            $raw_admins = $wpdb->get_results("
+                SELECT u.ID, u.user_login 
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} m ON u.ID = m.user_id
+                WHERE m.meta_key = '{$wpdb->prefix}capabilities'
+                AND m.meta_value LIKE '%\"administrator\"%'
+            ");
+            
+            $raw_admin_ids = array();
+            foreach ($raw_admins as $admin) {
+                $raw_admin_ids[] = (int) $admin->ID;
+            }
+            
+            $wp_admins = get_users(array('role' => 'administrator', 'fields' => 'ID'));
+            $wp_admin_ids = array_map('intval', $wp_admins);
+            
+            $ghost_admins = array_diff($raw_admin_ids, $wp_admin_ids);
+            
+            if (!empty($ghost_admins)) {
+                foreach ($raw_admins as $admin) {
+                    if (in_array((int)$admin->ID, $ghost_admins)) {
+                        $ghost_msg = sprintf(__("CRITICAL MALWARE ALERT: Ghost Admin detected! User '%s' (ID %d) has Administrator privileges in the database but is actively hidden from WordPress by malware!", "metzler-webshield"), $admin->user_login, $admin->ID);
+                        $ghost_msg .= '<br><button type="button" class="button button-small button-primary metzler-webshield-delete-user" data-user-id="'.esc_attr($admin->ID).'" style="background:#d63638;border-color:#d63638;">'.esc_html__('Delete user', 'metzler-webshield').'</button>';
+                        Metzler_Webshield_Logger::log($ghost_msg, "config", "error");
+                        continue;
+                    }
+                }
+            } else {
+                Metzler_Webshield_Logger::log(__("Ghost Admin Check passed: No hidden administrators found.", "metzler-webshield"), "config", "success");
+            }
+            
             // 4. wp-config.php Permissions Check
             $config_path = ABSPATH . 'wp-config.php';
             if ( ! file_exists($config_path) ) {

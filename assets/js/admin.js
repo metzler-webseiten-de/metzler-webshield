@@ -354,6 +354,28 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $(document).on('click', '.metzler-webshield-delete-user', function(e) {
+        e.preventDefault();
+        if (!confirm(metzler_webshield_ajax.i18n.delete_confirm)) return;
+        const btn = $(this);
+        const userId = btn.data('user-id');
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.deleting);
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_delete_user',
+            user_id: userId
+        }, function(response) {
+            if(response.success) {
+                btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.deleted_ghost + '</span>');
+                btn.remove();
+                fetchLogs();
+            } else {
+                alert(response.data.message || metzler_webshield_ajax.i18n.delete_error);
+                btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.delete_user);
+            }
+        });
+    });
+
     $(document).on('click', '.metzler-webshield-q-move', function(e) {
         e.preventDefault();
         const btn = $(this);

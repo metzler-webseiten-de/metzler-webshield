@@ -32,6 +32,7 @@ class Metzler_Webshield_Queue {
         add_action( 'wp_ajax_metzler_webshield_get_quarantine', array( $this, 'ajax_get_quarantine' ) );
         add_action( 'wp_ajax_metzler_webshield_cancel_scan', array( $this, 'ajax_cancel_scan' ) );
         add_action( 'wp_ajax_metzler_webshield_save_settings', array( $this, 'ajax_save_settings' ) );
+        add_action( 'wp_ajax_metzler_webshield_delete_user', array( $this, 'ajax_delete_user' ) );
     }
 
     public function ajax_start_scan(): void
@@ -234,6 +235,26 @@ class Metzler_Webshield_Queue {
         Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");
         
         wp_send_json_success();
+    }
+
+    public function ajax_delete_user(): void {
+        check_ajax_referer( 'metzler_webshield_nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die();
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        
+        if ( ! $user_id ) wp_send_json_error();
+        
+        if ( get_current_user_id() === $user_id ) {
+            wp_send_json_error(array('message' => __('You cannot delete yourself!', 'metzler-webshield')));
+        }
+        
+        require_once(ABSPATH.'wp-admin/includes/user.php');
+        if ( wp_delete_user($user_id) ) {
+            Metzler_Webshield_Logger::log(sprintf(__("Ghost Admin (ID %d) was successfully deleted.", "metzler-webshield"), $user_id), "config", "success");
+            wp_send_json_success();
+        } else {
+            wp_send_json_error(array('message' => __('Could not delete user.', 'metzler-webshield')));
+        }
     }
 
     public function ajax_quarantine_file(): void {

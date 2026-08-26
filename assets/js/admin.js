@@ -76,7 +76,7 @@ jQuery(document).ready(function($) {
                         $('#active-threats-list').append('<li style="margin-bottom:10px;">' + t.message + '</li>');
                     });
                     if (dashboardThreats.length > 5) {
-                        $('#active-threats-list').append('<li><em>... und ' + (dashboardThreats.length - 5) + ' weitere (siehe Protokoll).</em></li>');
+                        $('#active-threats-list').append('<li><em>' + metzler_webshield_ajax.i18n.more_logs.replace('%d', dashboardThreats.length - 5) + '</em></li>');
                     }
                     $('#metzler-webshield-active-threats').show();
                 } else {
@@ -105,7 +105,7 @@ jQuery(document).ready(function($) {
         tbody.empty();
         
         if (logs.length === 0) {
-            tbody.append('<tr><td colspan="3" style="text-align:center;">Das Protokoll ist leer.</td></tr>');
+            tbody.append('<tr><td colspan="3" style="text-align:center;">' + metzler_webshield_ajax.i18n.log_empty + '</td></tr>');
             return;
         }
 
@@ -127,7 +127,7 @@ jQuery(document).ready(function($) {
         const updateType = btn.data('update-type');
         const updateItem = btn.data('update-item');
         
-        btn.prop('disabled', true).text('Aktualisiere...');
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.updating);
         
         $.post(metzler_webshield_ajax.ajax_url, {
             _wpnonce: metzler_webshield_ajax.nonce,
@@ -136,14 +136,14 @@ jQuery(document).ready(function($) {
             update_item: updateItem
         }, function(response) {
             if (response.success) {
-                btn.replaceWith('<span style="color:#00a32a;">✔ Erfolgreich aktualisiert</span>');
+                btn.replaceWith('<span style="color:#00a32a;">' + metzler_webshield_ajax.i18n.update_success + '</span>');
                 issuesFound = Math.max(0, issuesFound - 1);
                 if (issuesFound === 0) {
                     setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_issues_fixed);
                 }
             } else {
-                btn.text('Fehler beim Update');
-                showToast(response.data.message || 'Ein Fehler ist aufgetreten.', 'error');
+                btn.text(metzler_webshield_ajax.i18n.update_error);
+                showToast(response.data.message || metzler_webshield_ajax.i18n.generic_error, 'error');
             }
         });
     });
@@ -170,11 +170,11 @@ jQuery(document).ready(function($) {
                     finishScan();
                 }
             } else {
-                $('#scan-status-text').text('Scan abgebrochen: ' + response.data.message);
+                $('#scan-status-text').text(metzler_webshield_ajax.i18n.scan_aborted_msg + response.data.message);
                 finishScan();
             }
         }).fail(function() {
-            $('#scan-status-text').text('Verbindungsproblem. Wiederhole...');
+            $('#scan-status-text').text(metzler_webshield_ajax.i18n.connection_error);
             setTimeout(processQueue, 2000);
         });
     }
@@ -321,7 +321,7 @@ jQuery(document).ready(function($) {
     
     $('#btn-create-baseline').on('click', function() {
         const btn = $(this);
-        btn.prop('disabled', true).text('Erstelle Baseline...');
+        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.creating_baseline);
         $.post(metzler_webshield_ajax.ajax_url, {
             _wpnonce: metzler_webshield_ajax.nonce,
             action: 'metzler_webshield_create_baseline'
@@ -330,7 +330,7 @@ jQuery(document).ready(function($) {
                 showToast(response.data.message);
                 fetchLogs();
             }
-            btn.prop('disabled', false).text('FIM Baseline setzen');
+            btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.set_fim_baseline);
         });
     });
 
@@ -339,7 +339,7 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         const btn = $(this);
         const path = btn.data('path');
-        btn.text('Speichere...');
+        btn.text(metzler_webshield_ajax.i18n.saving);
         $.post(metzler_webshield_ajax.ajax_url, {
             _wpnonce: metzler_webshield_ajax.nonce,
             action: 'metzler_webshield_accept_fim',

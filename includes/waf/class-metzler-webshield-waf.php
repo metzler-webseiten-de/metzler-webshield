@@ -202,11 +202,11 @@ class Metzler_Webshield_WAF {
         header('Status: 403 Forbidden');
         ?>
         <!DOCTYPE html>
-        <html lang="de">
+        <html lang="<?php echo esc_attr( str_replace('_', '-', get_locale()) ); ?>">
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Zugriff blockiert | Metzler_Webshield</title>
+            <title><?php echo esc_html__('Access Blocked', 'metzler-webshield'); ?> | Metzler_Webshield</title>
             <style>
                 :root { --primary-color: #0d1b2a; --error-color: #e63946; --text-color: #333; --bg-color: #f8f9fa; }
                 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -229,18 +229,18 @@ class Metzler_Webshield_WAF {
                 <div class="icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 </div>
-                <h1>Zugriff blockiert</h1>
-                <p class="lead">Deine Anfrage wurde von unserer Web Application Firewall als potenziell gefährlich eingestuft und sicherheitshalber blockiert.</p>
+                <h1><?php echo esc_html__('Access Blocked', 'metzler-webshield'); ?></h1>
+                <p class="lead"><?php echo esc_html__('Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.', 'metzler-webshield'); ?></p>
                 
                 <div class="details-box">
-                    <p><strong>Deine IP:</strong> <?php // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
- echo esc_html( sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '')) ?? 'Unbekannt' ); ?></p>
-                    <p><strong>Event-ID:</strong> <?php echo esc_html(md5($ip . time())); ?></p>
+                    <p><strong><?php echo esc_html__('IP:', 'metzler-webshield'); ?></strong> <?php // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+ echo esc_html( sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '')) ?: __('Unknown', 'metzler-webshield') ); ?></p>
+                    <p><strong><?php echo esc_html__('Event ID:', 'metzler-webshield'); ?></strong> <?php echo esc_html(md5($ip . time())); ?></p>
                 </div>
                 
                 <div class="footer">
-                    <span>Geschützt durch <strong>Metzler_Webshield</strong></span>
-                    <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>">Admin kontaktieren</a>
+                    <span><?php echo wp_kses_post(__('Protected by <strong>Metzler_Webshield</strong>', 'metzler-webshield')); ?></span>
+                    <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>"><?php echo esc_html__('Contact Admin', 'metzler-webshield'); ?></a>
                 </div>
             </div>
         </body>

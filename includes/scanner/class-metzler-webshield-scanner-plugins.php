@@ -109,8 +109,8 @@ class Metzler_Webshield_Scanner_Plugins {
                                 $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
                                 if ( ! $baseline || $baseline->file_hash !== $actual_hash ) {
                                     $modifications_found++;
-                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                                     Metzler_Webshield_Logger::log(sprintf( __("Plugin file modified: %s -> %s%s", "metzler-webshield"), $name, esc_html($file_name), $actions ), "plugins", "error");
                                 }
                             }
@@ -132,8 +132,8 @@ class Metzler_Webshield_Scanner_Plugins {
                                 
                                 $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $full_relative)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
                                 if ( ! $baseline || $baseline->file_hash !== md5_file($local_file) ) {
-                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">Als sicher markieren</button> ';
-                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                                     Metzler_Webshield_Logger::log(sprintf( __("Critical: Unknown file in plugin (Rogue File): %s -> %s%s", "metzler-webshield"), $name, esc_html($relative_path), $actions ), "plugins", "error");
                                 }
                             }
@@ -150,7 +150,7 @@ class Metzler_Webshield_Scanner_Plugins {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'plugins' => $plugins, 'index' => $end),
-                'message' => 'Prüfe Plugins (' . $end . '/' . $total . ')...'
+                'message' => sprintf(__('Checking plugins (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }
         

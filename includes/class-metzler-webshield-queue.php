@@ -209,7 +209,7 @@ class Metzler_Webshield_Queue {
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         $fim = new Metzler_Webshield_FIM();
         $count = $fim->build_baseline();
-        wp_send_json_success(array('message' => "Baseline mit $count Dateien erfolgreich erstellt."));
+        wp_send_json_success(array('message' => sprintf(__('Baseline successfully created with %d files.', 'metzler-webshield'), $count)));
     }
 
     public function ajax_cancel_scan(): void {

@@ -129,7 +129,7 @@ class Metzler_Webshield_Scanner_Core {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'files' => $files, 'index' => $end),
-                'message' => 'Prüfe Core-Dateien (' . $end . '/' . $total . ')...'
+                'message' => sprintf(__('Checking core files (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }
         

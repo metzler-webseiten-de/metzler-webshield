@@ -10,7 +10,7 @@ class Metzler_Webshield_Scanner_Config {
             // 1. PHP Version
             $php_version = phpversion();
             if ( version_compare($php_version, '8.0', '<') ) {
-                Metzler_Webshield_Logger::log("Sicherheitsrisiko: Sehr alte PHP Version im Einsatz ($php_version). Bitte auf mindestens PHP 8.0 aktualisieren.", "config", "warning");
+                Metzler_Webshield_Logger::log(sprintf(__("Security risk: Very old PHP version in use (%s). Please update to at least PHP 8.0.", "metzler-webshield"), $php_version), "config", "warning");
             } else {
                 Metzler_Webshield_Logger::log(sprintf( __("PHP version is up to date (%s).", "metzler-webshield"), $php_version ), "config", "success");
             }

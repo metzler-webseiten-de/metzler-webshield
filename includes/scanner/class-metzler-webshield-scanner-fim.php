@@ -54,13 +54,13 @@ class Metzler_Webshield_Scanner_FIM {
                 
                 if ( ! $baseline_row ) {
                     // File is new!
-                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                     Metzler_Webshield_Logger::log(sprintf( __("FIM Alert: New, unknown file found -> %s%s", "metzler-webshield"), esc_html($relative_path), $actions ), "system", "error");
                 } else if ( $baseline_row->file_hash !== $actual_hash ) {
                     // File is modified!
-                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                    $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                    $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                     Metzler_Webshield_Logger::log(sprintf( __("FIM Alert: File modified after snapshot -> %s%s", "metzler-webshield"), esc_html($relative_path), $actions ), "system", "error");
                 }
             }
@@ -73,7 +73,7 @@ class Metzler_Webshield_Scanner_FIM {
             return array(
                 'complete' => false,
                 'next_payload' => array('step' => 'process', 'index' => $end),
-                'message' => 'FIM-Scan (' . $end . '/' . $total . ')...'
+                'message' => sprintf(__('FIM scan (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }
         

@@ -51,7 +51,7 @@ class Metzler_Webshield_Scanner_Files {
             // Malware Signatures (Heuristics) - Obfuscated in code to prevent self-detection (False Positive on scanner itself)
             $malware_patterns = array(
                 // 1. Generic Obfuscation & Dynamic Execution
-                '\\$[a-zA-Z-�][a-zA-Z0-9_-�]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
+                '\\$[a-zA-Z-�][a-zA-Z0-9_-�]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
                 'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)' => __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield'),
                 '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))' => __('Dangerous system commands with user input', 'metzler-webshield'),
                 'file_put_contents\s*\(\s*.*?\s*,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'),
@@ -97,7 +97,7 @@ class Metzler_Webshield_Scanner_Files {
                                     }
                                 }
                                 $threat_found = true;
-                                $threat_reason = 'Ausführbare Datei im Upload-Verzeichnis.';
+                                $threat_reason = __('Executable file in uploads directory.', 'metzler-webshield');
                             }
                         }
                         
@@ -108,14 +108,14 @@ class Metzler_Webshield_Scanner_Files {
                                  preg_match('/php_value\s+(auto_prepend_file|auto_append_file)/i', $content) ||
                                  preg_match('/(sethandler|addhandler|addtype)\s+[^>\n]*php/i', $content) ) {
                                 $threat_found = true;
-                                $threat_reason = 'Gefährliche PHP-Aktivierung in .htaccess Datei.';
+                                $threat_reason = __('Dangerous PHP activation in .htaccess file.', 'metzler-webshield');
                             }
                         }
                         if ( !$threat_found && $basename === 'web.config' ) {
                             $content = strtolower(file_get_contents($full_path));
                             if ( str_contains( $content, 'php' ) && str_contains( $content, 'handler' ) ) {
                                 $threat_found = true;
-                                $threat_reason = 'Gefährlicher Handler in web.config Datei.';
+                                $threat_reason = __('Dangerous handler in web.config file.', 'metzler-webshield');
                             }
                         }
                         
@@ -127,7 +127,7 @@ class Metzler_Webshield_Scanner_Files {
                             foreach ( $malware_patterns as $pattern => $name ) {
                                 if ( preg_match('/' . $pattern . '/is', $content) ) {
                                     $threat_found = true;
-                                    $threat_reason = 'Malware-Signatur gefunden: ' . $name;
+                                    $threat_reason = __('Malware signature found:', 'metzler-webshield') . ' ' . $name;
                                     break;
                                 }
                             }
@@ -137,8 +137,8 @@ class Metzler_Webshield_Scanner_Files {
                             $relative_path = ltrim(str_replace(ABSPATH, '', $full_path), '/\\');
                             $relative_path = str_replace('\\', '/', $relative_path);
                             
-                            $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">Als sicher markieren</button> ';
-                            $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">In Quarantäne verschieben</button>';
+                            $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                            $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                             
                             Metzler_Webshield_Logger::log(sprintf( __('Critical: %1$s (%2$s)%3$s', 'metzler-webshield'), $threat_reason, $relative_path, $actions ), "files", "error");
                         }

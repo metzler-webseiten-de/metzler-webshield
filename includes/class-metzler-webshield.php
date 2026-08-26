@@ -123,7 +123,7 @@ class Metzler_Webshield {
                 $attack_type = 'Brute_Force';
             } 
             // Check if it is a standard WAF block log
-            else if (preg_match('/WAF Block: \d+ Angriffe? von IP ([0-9a-fA-F:\.]+) \((.*?)\)/', $row->message, $matches)) {
+            else if (preg_match('/WAF Block: \d+ attacks? from IP ([0-9a-fA-F:\.]+) \((.*?)\)/', $row->message, $matches)) {
                 $ip = $matches[1];
                 $attack_type = $matches[2]; // Can be multiple types comma separated, but good enough for history
             }
@@ -217,9 +217,9 @@ class Metzler_Webshield {
             foreach ( $ui_summary as $ip => $data ) {
                 $types_str = implode(', ', $data['types']);
                 if ( $data['count'] === 1 ) {
-                    $msg = "WAF Block: 1 Angriff von IP $ip ($types_str) abgewehrt.";
+                    $msg = sprintf( __("WAF Block: 1 attack from IP %1\$s (%2\$s) prevented.", "metzler-webshield"), $ip, $types_str );
                 } else {
-                    $msg = "WAF Block: " . $data['count'] . " Angriffe von IP $ip ($types_str) abgewehrt.";
+                    $msg = sprintf( __("WAF Block: %1\$d attacks from IP %2\$s (%3\$s) prevented.", "metzler-webshield"), $data['count'], $ip, $types_str );
                 }
                 Metzler_Webshield_Logger::log($msg, 'waf', 'success');
             }

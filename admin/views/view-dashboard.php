@@ -161,7 +161,7 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
                     </h2>
                     <div class="inside" style="display:flex; gap:30px;">
                         <p><strong>Server IP:</strong> <?php // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
- echo esc_html(sanitize_text_field(wp_unslash($_SERVER['SERVER_ADDR'] ?? '')) ?? 'Unbekannt'); ?></p>
+ echo esc_html(sanitize_text_field(wp_unslash($_SERVER['SERVER_ADDR'] ?? '')) ?: __('Unknown', 'metzler-webshield')); ?></p>
                         <p><strong>PHP Version:</strong> <?php echo esc_html(phpversion()); ?></p>
                         <p><strong>WordPress:</strong> <?php echo esc_html(get_bloginfo("version")); ?></p>
                     </div>

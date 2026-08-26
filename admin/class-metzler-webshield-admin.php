@@ -84,6 +84,17 @@ class Metzler_Webshield_Admin {
                 'init_scan'          => __('Initializing Smart Scan...', 'metzler-webshield'),
                 'confirm_cancel_scan'=> __('Do you really want to cancel the current scan?', 'metzler-webshield'),
                 'confirm_clear_log'  => __('Do you really want to clear the entire security log?', 'metzler-webshield'),
+                'more_logs'          => __('... and %d more (see log).', 'metzler-webshield'),
+                'log_empty'          => __('The log is empty.', 'metzler-webshield'),
+                'updating'           => __('Updating...', 'metzler-webshield'),
+                'update_success'     => __('✔ Successfully updated', 'metzler-webshield'),
+                'update_error'       => __('Error during update', 'metzler-webshield'),
+                'generic_error'      => __('An error occurred.', 'metzler-webshield'),
+                'scan_aborted_msg'   => __('Scan aborted: ', 'metzler-webshield'),
+                'connection_error'   => __('Connection problem. Retrying...', 'metzler-webshield'),
+                'creating_baseline'  => __('Creating baseline...', 'metzler-webshield'),
+                'set_fim_baseline'   => __('Set FIM Baseline', 'metzler-webshield'),
+                'saving'             => __('Saving...', 'metzler-webshield'),
             )
         ));
     }

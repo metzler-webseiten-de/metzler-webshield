@@ -43,11 +43,15 @@ class Metzler_Webshield_Scanner_Files {
             
             $bad_extensions = array('php', 'phtml', 'php5', 'sh', 'exe', 'pl', 'cgi');
             $bad_filenames = array('.htaccess', '.user.ini', 'php.ini', 'web.config');
+              
+              // Load WordPress Core Checksums to skip valid core files for massive performance boost
+              $core_checksums = get_transient( 'metzler_webshield_core_checksums' );
+              if ( !is_array($core_checksums) ) $core_checksums = array();
             
             // Malware Signatures (Heuristics) - Obfuscated in code to prevent self-detection (False Positive on scanner itself)
             $malware_patterns = array(
                 // 1. Generic Obfuscation & Dynamic Execution
-                '\\$[a-zA-Z_-ÿ][a-zA-Z0-9_-ÿ]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
+                '\\$[a-zA-Z-ÿ][a-zA-Z0-9_-ÿ]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
                 'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)' => __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield'),
                 '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))' => __('Dangerous system commands with user input', 'metzler-webshield'),
                 'file_put_contents\s*\(\s*.*?\s*,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'),

@@ -122,7 +122,7 @@ class Metzler_Webshield_Scanner_Core {
             
             if ( $end >= $total ) {
                 Metzler_Webshield_Logger::log(__("WordPress Core file check completed.", "metzler-webshield"), "core", "success");
-                delete_transient( 'metzler_webshield_core_checksums' );
+                // delete_transient( 'metzler_webshield_core_checksums' ); // Removed so the file scanner can reuse it for performance!
                 return array('complete' => true, 'message' => __('Core scan completed', 'metzler-webshield'));
             }
             

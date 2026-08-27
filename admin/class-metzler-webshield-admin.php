@@ -19,7 +19,7 @@ class Metzler_Webshield_Admin {
             'metzler-webshield', 
             array( $this, 'display_plugin_setup_page' ),
             'dashicons-shield', 
-            3
+            80
         );
     }
 
@@ -165,12 +165,11 @@ class Metzler_Webshield_Admin {
             update_option( 'metzler_webshield_license_token', $token );
             update_option( 'metzler_webshield_verified_email', $email );
             update_option( 'metzler_webshield_is_licensed', true );
-            
-            // Auto-enable telemetry when user opts into the Cloud License
-            update_option( 'metzler_webshield_enable_telemetry', '1' );
-            
+            $telemetry_opt_in = sanitize_text_field(wp_unslash($_POST['telemetry'] ?? '0')) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.NonceVerification
+            update_option( 'metzler_webshield_enable_telemetry', $telemetry_opt_in );
             // Save token to file for high-speed WAF access without DB overhead
-            $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+            $upload_base = wp_upload_dir();
+            $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
             if ( ! is_dir($upload_dir) ) {
                 @mkdir($upload_dir, 0755, true); // phpcs:ignore
                 @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
@@ -223,8 +222,9 @@ class Metzler_Webshield_Admin {
         delete_option( 'metzler_webshield_license_token' );
         delete_option( 'metzler_webshield_verified_email' );
         
-        @unlink(WP_CONTENT_DIR . '/uploads/metzler-webshield/waf.key'); // phpcs:ignore
-        @unlink(WP_CONTENT_DIR . '/uploads/metzler-webshield/waf-rules.enc'); // phpcs:ignore
+        $upload_base = wp_upload_dir();
+        @unlink($upload_base['basedir'] . '/metzler-webshield/waf.key'); // phpcs:ignore
+        @unlink($upload_base['basedir'] . '/metzler-webshield/waf-rules.enc'); // phpcs:ignore
 
         wp_send_json_success( array( 'message' => __( 'License removed.', 'metzler-webshield' ) ) );
     }

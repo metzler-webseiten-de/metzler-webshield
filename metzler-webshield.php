@@ -31,12 +31,6 @@ function run_metzler_webshield(): void { // phpcs:ignore WordPress.NamingConvent
 }
 run_metzler_webshield();
 
-add_action( 'plugins_loaded', 'metzler_webshield_load_textdomain' );
-function metzler_webshield_load_textdomain(): void {
-    // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound
-    load_plugin_textdomain( 'metzler-webshield', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-}
-
 register_activation_hook( __FILE__, array( 'Metzler_Webshield', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Metzler_Webshield', 'deactivate' ) );
 

@@ -42,7 +42,8 @@ if ( file_exists( $mu_file ) ) { // phpcs:ignore WordPress.NamingConventions.Pre
 } // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
 // 4. Remove Uploads Directory (Quarantine & Telemetry JSONL) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$upload_dir = WP_CONTENT_DIR . "/uploads/metzler-webshield"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+$upload_base = wp_upload_dir(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+$upload_dir = $upload_base['basedir'] . "/metzler-webshield"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
 if ( is_dir( $upload_dir ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     $files = glob( $upload_dir . "/*" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals

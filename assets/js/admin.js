@@ -548,6 +548,7 @@ jQuery(document).ready(function($) {
         const btn = $(this);
         const token = $('#metzler-webshield-license-token').val();
         const email = $('#metzler-webshield-license-email').val();
+        const telemetry = $('#metzler-webshield-license-telemetry').is(':checked') ? '1' : '0';
         const feedback = $('#license-verify-feedback');
 
         if (!token) {
@@ -562,7 +563,8 @@ jQuery(document).ready(function($) {
             _wpnonce: metzler_webshield_ajax.nonce,
             action: 'metzler_webshield_verify_license',
             token: token,
-            email: email
+            email: email,
+            telemetry: telemetry
         }, function(res) {
             if (res.success) {
                 feedback.css('color', 'green').text(res.data.message);

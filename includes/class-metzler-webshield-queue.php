@@ -331,13 +331,7 @@ class Metzler_Webshield_Queue {
         update_option('metzler_webshield_disable_xmlrpc', $disable_xmlrpc);
         update_option('metzler_webshield_enable_telemetry', $enable_telemetry);
         
-        // Handle WAF installation
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf-installer.php';
-        if ( $enable_waf === '1' ) {
-            Metzler_Webshield_WAF_Installer::enable_waf();
-        } else {
-            Metzler_Webshield_WAF_Installer::disable_waf();
-        }
+        // WAF is enabled/disabled just by the option now. No mu-plugin installer needed.
         
         wp_send_json_success();
     }

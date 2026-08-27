@@ -331,11 +331,10 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                                 <strong><?php echo esc_html__("Block attacks before execution", "metzler-webshield"); ?></strong>
                             </label>
                             <?php 
-                                require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf-installer.php';
-                                $waf_active = Metzler_Webshield_WAF_Installer::is_waf_active(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+                                $waf_active = get_option('metzler_webshield_enable_waf', '0') === '1'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
                             ?>
                             <p class="metzler-webshield-stat-highlight <?php echo $waf_active ? 'waf-active' : 'waf-inactive'; ?>">
-                                <?php echo esc_html__("Status:", "metzler-webshield") . " " . ($waf_active ? esc_html__('Active (MU-Plugin installed)', 'metzler-webshield') : esc_html__('Inactive (MU-Plugin not found)', 'metzler-webshield')); ?>
+                                <?php echo esc_html__("Status:", "metzler-webshield") . " " . ($waf_active ? esc_html__('Active', 'metzler-webshield') : esc_html__('Inactive', 'metzler-webshield')); ?>
                             </p>
                             <p class="description"><?php echo esc_html__("The Web Application Firewall intercepts SQL injections, malicious Cross-Site Scripting (XSS), and hacker bots in milliseconds before WordPress is even fully loaded. Uses extremely fast ModSecurity-based patterns.", "metzler-webshield"); ?></p>
                         </td>
@@ -430,6 +429,11 @@ sprintf(wp_kses_post(__("Your domain <strong>%s</strong> is successfully license
                                     <input type="text" id="metzler-webshield-license-token" class="regular-text" placeholder="<?php echo esc_attr__("E.g. A1B2C3D4E5F6G7H8", "metzler-webshield"); ?>">
                                     <button type="button" id="btn-verify-license" class="button button-primary"><?php echo esc_html__("Verify License", "metzler-webshield"); ?></button>
                                     <span id="license-verify-feedback" class="metzler-webshield-action-feedback"></span>
+                                    <br><br>
+                                    <label>
+                                        <input type="checkbox" id="metzler-webshield-license-telemetry" value="1">
+                                        <?php echo esc_html__("I agree to share anonymous telemetry data to improve threat intelligence (optional).", "metzler-webshield"); ?>
+                                    </label>
                                 </td>
                             </tr>
                         </table>

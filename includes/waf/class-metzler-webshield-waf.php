@@ -33,21 +33,21 @@ class Metzler_Webshield_WAF {
             $this->browser_integrity_check();
         }
         
-        $this->inspect_payload($_GET, 'GET'); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-        $this->inspect_payload($_POST, 'POST'); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-        $this->inspect_payload($_COOKIE, 'COOKIE');
+        $this->inspect_payload(wp_unslash($_GET), 'GET'); // phpcs:ignore WordPress.Security.NonceVerification
+        $this->inspect_payload(wp_unslash($_POST), 'POST'); // phpcs:ignore WordPress.Security.NonceVerification
+        $this->inspect_payload(wp_unslash($_COOKIE), 'COOKIE');
         
-        // Inspect Raw URIs (Crucial for pretty permalinks where $_GET is empty during MU phase) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
+        // Inspect Raw URIs (Crucial for pretty permalinks where $_GET is empty during MU phase)
         if ( isset($_SERVER['REQUEST_URI']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( wp_unslash($_SERVER['REQUEST_URI']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         if ( isset($_SERVER['QUERY_STRING']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( $_SERVER['QUERY_STRING'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( wp_unslash($_SERVER['QUERY_STRING']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
         // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots)
         if ( ! $is_loopback && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( $_SERVER['HTTP_USER_AGENT'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( wp_unslash($_SERVER['HTTP_USER_AGENT']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
     }
     
@@ -75,8 +75,9 @@ class Metzler_Webshield_WAF {
     }
     
     private function load_rules(): void {
-        $enc_file = WP_CONTENT_DIR . '/uploads/metzler-webshield/waf-rules.enc';
-        $key_file = WP_CONTENT_DIR . '/uploads/metzler-webshield/waf.key';
+        $upload_base = wp_upload_dir();
+        $enc_file = $upload_base['basedir'] . '/metzler-webshield/waf-rules.enc';
+        $key_file = $upload_base['basedir'] . '/metzler-webshield/waf.key';
         
         if ( file_exists($enc_file) && file_exists($key_file) ) {
             $token = file_get_contents($key_file);
@@ -182,70 +183,36 @@ class Metzler_Webshield_WAF {
         $telemetry_data = array(
             'domain'         => $domain,
             'ip_address'     => $ip,
-            'user_agent'     => $user_agent,
-            'request_uri'    => $request_uri,
+            'user_agent'     => base64_encode($user_agent), // base64 encoded for safe storage/transport
+            'request_uri'    => base64_encode($request_uri), // base64 encoded for safe storage/transport
             'request_method' => $request_method,
             'attack_type'    => $category,
-            'payload'        => substr(urldecode($payload), 0, 1000), // Trim to max 1000 chars
-            'headers'        => $headers
+            'payload'        => base64_encode(substr(urldecode($payload), 0, 1000)), // base64 encoded for safe storage/transport
+            'headers'        => $headers,
+            'encoding'       => 'base64'
         );
 
-        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+        $upload_base = wp_upload_dir();
+        $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
         if ( ! is_dir($upload_dir) ) {
             @mkdir($upload_dir, 0755, true); // phpcs:ignore
         }
         $telemetry_file = $upload_dir . '/telemetry.jsonl';
         @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX); // phpcs:ignore
         
-        // Output Block Screen
-        header('HTTP/1.1 403 Forbidden');
-        header('Status: 403 Forbidden');
-        ?>
-        <!DOCTYPE html>
-        <html lang="<?php echo esc_attr( str_replace('_', '-', get_locale()) ); ?>">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title><?php echo esc_html__('Access Blocked', 'metzler-webshield'); ?> | Metzler_Webshield</title>
-            <style>
-                :root { --primary-color: #0d1b2a; --error-color: #e63946; --text-color: #333; --bg-color: #f8f9fa; }
-                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                .container { background: #fff; max-width: 650px; width: 90%; padding: 50px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid var(--error-color); }
-                .icon { background: #fee2e2; color: var(--error-color); width: 80px; height: 80px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 25px; }
-                .icon svg { width: 40px; height: 40px; }
-                h1 { color: var(--primary-color); font-size: 28px; margin: 0 0 15px; font-weight: 700; }
-                p.lead { font-size: 18px; line-height: 1.6; color: #555; margin-bottom: 30px; }
-                .details-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: left; margin-bottom: 30px; }
-                .details-box p { margin: 8px 0; font-size: 14px; color: #666; font-family: monospace; }
-                .details-box strong { color: var(--primary-color); display: inline-block; width: 120px; }
-                .footer { font-size: 13px; color: #999; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-                .footer a { color: #666; text-decoration: none; }
-                .footer a:hover { text-decoration: underline; }
-                .badge { background: #e63946; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </div>
-                <h1><?php echo esc_html__('Access Blocked', 'metzler-webshield'); ?></h1>
-                <p class="lead"><?php echo esc_html__('Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.', 'metzler-webshield'); ?></p>
-                
-                <div class="details-box">
-                    <p><strong><?php echo esc_html__('IP:', 'metzler-webshield'); ?></strong> <?php // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
- echo esc_html( sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '')) ?: __('Unknown', 'metzler-webshield') ); ?></p>
-                    <p><strong><?php echo esc_html__('Event ID:', 'metzler-webshield'); ?></strong> <?php echo esc_html(md5($ip . time())); ?></p>
-                </div>
-                
-                <div class="footer">
-                    <span><?php echo wp_kses_post(__('Protected by <strong>Metzler_Webshield</strong>', 'metzler-webshield')); ?></span>
-                    <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>"><?php echo esc_html__('Contact Admin', 'metzler-webshield'); ?></a>
-                </div>
-            </div>
-        </body>
-        </html>
-        <?php
-        exit;
+        $title = __('Access Blocked', 'metzler-webshield');
+        $message = '<h1>' . esc_html__('Access Blocked', 'metzler-webshield') . '</h1>';
+        $message .= '<p>' . esc_html__('Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.', 'metzler-webshield') . '</p>';
+        $message .= '<p><strong>' . esc_html__('IP:', 'metzler-webshield') . '</strong> ' . esc_html( $ip ) . '</p>';
+        $message .= '<p><strong>' . esc_html__('Event ID:', 'metzler-webshield') . '</strong> ' . esc_html(md5($ip . time())) . '</p>';
+        
+        if ( function_exists('wp_die') ) {
+            wp_die(wp_kses_post($message), esc_html($title), array('response' => 403));
+        } else {
+            header('HTTP/1.1 403 Forbidden');
+            header('Status: 403 Forbidden');
+            echo wp_kses_post($message); // phpcs:ignore WordPress.Security.EscapeOutput
+            exit;
+        }
     }
 }

@@ -5,7 +5,8 @@ class Metzler_Webshield_Quarantine {
     private string $quarantine_dir;
 
     public function __construct() {
-        $this->quarantine_dir = WP_CONTENT_DIR . '/metzler-webshield-quarantine';
+        $upload_base = wp_upload_dir();
+        $this->quarantine_dir = $upload_base['basedir'] . '/metzler-webshield/quarantine';
     }
 
     public static function create_table(): void {
@@ -58,8 +59,15 @@ class Metzler_Webshield_Quarantine {
         // Prevent path traversal
         if ( str_contains( $relative_path, '..' ) ) return false;
 
-        $abs_path = ABSPATH . ltrim($relative_path, '/\\');
-        if ( ! file_exists($abs_path) ) return false;
+        $abs_path = wp_normalize_path(ABSPATH . ltrim($relative_path, '/\\'));
+        $real_path = realpath($abs_path);
+        
+        if ( ! $real_path || ! str_starts_with( wp_normalize_path($real_path), wp_normalize_path(ABSPATH) ) ) {
+            return false;
+        }
+
+        if ( ! file_exists($real_path) ) return false;
+        $abs_path = $real_path;
 
         $file_name = basename($abs_path);
         $new_name = uniqid('locked_') . '_' . $file_name . '.quarantine';

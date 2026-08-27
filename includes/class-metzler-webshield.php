@@ -18,7 +18,14 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-quarantine.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-config.php';
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf-installer.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf.php';
+        
+        // Execute WAF immediately on plugin load
+        if ( get_option('metzler_webshield_enable_waf', false) !== false ) {
+            $waf = new Metzler_Webshield_WAF();
+            $waf->run();
+        }
+        
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-login.php';
         
         if ( is_admin() ) {
@@ -137,8 +144,9 @@ class Metzler_Webshield {
                 'ip_address' => sanitize_text_field($ip),
                 'attack_type' => sanitize_text_field($attack_type),
                 'severity' => 'high',
-                'request_uri' => '/historical-sync',
-                'user_agent' => 'Legacy_Log_Export'
+                'request_uri' => base64_encode('/historical-sync'),
+                'user_agent' => base64_encode('Legacy_Log_Export'),
+                'encoding' => 'base64'
             );
             
             @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
@@ -184,7 +192,7 @@ class Metzler_Webshield {
                 // Aggregate for UI: Group by IP (Skip Legacy/Historical and Brute_Force because they are already in the DB!)
                 $ip = $decoded['ip_address'];
                 $type = $decoded['attack_type'];
-                $user_agent = $decoded['user_agent'] ?? '';
+                $user_agent = isset($decoded['user_agent']) ? base64_decode($decoded['user_agent']) : '';
                 
                 if ( $type !== 'Brute_Force' && $user_agent !== 'Legacy_Log_Export' ) {
                     if ( !isset($ui_summary[$ip]) ) {
@@ -271,8 +279,6 @@ class Metzler_Webshield {
         // Auto-Enable WAF on activation
         if ( get_option('metzler_webshield_enable_waf', false) === false ) {
             update_option('metzler_webshield_enable_waf', '1');
-            require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf-installer.php';
-            Metzler_Webshield_WAF_Installer::enable_waf();
         }
         
         // Schedule daily cronjob if not already scheduled
@@ -334,8 +340,6 @@ class Metzler_Webshield {
     public static function deactivate(): void {
         // We do not drop tables on deactivation to avoid losing log history
         // Use uninstall.php to delete everything
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf-installer.php';
-        Metzler_Webshield_WAF_Installer::disable_waf();
         
         // Unschedule cronjobs
         wp_clear_scheduled_hook( 'metzler_webshield_daily_scan' );

@@ -26,7 +26,8 @@ class Metzler_Webshield_Admin {
     public function enqueue_styles_scripts( $hook ) {
         if ( 'toplevel_page_metzler-webshield' !== $hook ) return;
         wp_enqueue_style( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/css/admin.css', array(), METZLER_WEBSHIELD_VERSION );
-        wp_enqueue_script( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery' ), METZLER_WEBSHIELD_VERSION, true );
+        wp_enqueue_script( 'metzler-webshield-chartjs', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/chart.min.js', array(), METZLER_WEBSHIELD_VERSION, true );
+        wp_enqueue_script( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery', 'metzler-webshield-chartjs' ), METZLER_WEBSHIELD_VERSION, true );
         wp_localize_script( 'metzler-webshield-admin', 'metzler_webshield_ajax', array(
             'ajax_url'    => admin_url( 'admin-ajax.php' ),
             'nonce'       => wp_create_nonce( 'metzler_webshield_nonce' ),

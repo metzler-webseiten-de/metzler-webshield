@@ -153,6 +153,103 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
     <div id="poststuff">
         <div id="post-body" class="metabox-holder columns-1">
             <div id="post-body-content">
+                <!-- Global Attack Statistics Widget -->
+                <div class="postbox metzler-webshield-postbox">
+                    <h2 class="hndle">
+                        <span class="dashicons dashicons-chart-area"></span>
+                        <span><?php echo esc_html__("Metzler Webshield Global Intelligence", "metzler-webshield"); ?></span>
+                    </h2>
+                    <div class="inside" style="position: relative;">
+                        <p style="margin-top: 0; color: #646970;">
+                            <?php echo esc_html__("Blocked attacks across the global network in the last 24 hours.", "metzler-webshield"); ?>
+                        </p>
+                        
+                        <div style="height: 250px; width: 100%;">
+                            <canvas id="metzlerGlobalAttacksChart"></canvas>
+                        </div>
+                        <div id="metzler-chart-loader" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                            <span class="spinner is-active" style="float: none; margin: 0;"></span>
+                        </div>
+                        
+                        <?php
+                        // Server-side Fetch to protect admin privacy (no direct browser calls to external APIs)
+                        $metzler_webshield_global_stats_json = get_transient('metzler_webshield_global_stats');
+                        if ( false === $metzler_webshield_global_stats_json ) {
+                            $metzler_webshield_api_response = wp_remote_get('https://api.metzler-webshield.de/api/stats/attacks-24h', array('timeout' => 3));
+                            if ( ! is_wp_error( $metzler_webshield_api_response ) && wp_remote_retrieve_response_code( $metzler_webshield_api_response ) === 200 ) {
+                                // Safely decode and re-encode to ensure it's valid JSON and harmless
+                                $metzler_webshield_decoded = json_decode( wp_remote_retrieve_body( $metzler_webshield_api_response ), true );
+                                $metzler_webshield_global_stats_json = wp_json_encode( $metzler_webshield_decoded ?: array('labels' => array(), 'data' => array()) );
+                                set_transient('metzler_webshield_global_stats', $metzler_webshield_global_stats_json, 5 * MINUTE_IN_SECONDS);
+                            } else {
+                                // Fallback empty data if API is down
+                                $metzler_webshield_global_stats_json = wp_json_encode(array('labels' => array(), 'data' => array()));
+                            }
+                        }
+                        ?>
+                        
+                        <!-- Render chart -->
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                document.getElementById('metzler-chart-loader').style.display = 'none';
+                                
+                                const data = <?php echo $metzler_webshield_global_stats_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+                                
+                                if (!data.labels || data.labels.length === 0) {
+                                    document.getElementById('metzler-chart-loader').style.display = 'block';
+                                    document.getElementById('metzler-chart-loader').innerHTML = '<?php echo esc_js(__("Could not load statistics.", "metzler-webshield")); ?>';
+                                    return;
+                                }
+
+                                const ctx = document.getElementById('metzlerGlobalAttacksChart').getContext('2d');
+                                new Chart(ctx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: data.labels,
+                                        datasets: [{
+                                            label: '<?php echo esc_js(__("Blocked Attacks", "metzler-webshield")); ?>',
+                                            data: data.data,
+                                            backgroundColor: 'rgba(0, 163, 42, 0.1)',
+                                            borderColor: 'rgba(0, 163, 42, 1)',
+                                            borderWidth: 2,
+                                            pointRadius: 2,
+                                            pointBackgroundColor: 'rgba(0, 163, 42, 1)',
+                                            fill: true,
+                                            tension: 0.3
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                display: false
+                                            },
+                                            tooltip: {
+                                                mode: 'index',
+                                                intersect: false,
+                                            }
+                                        },
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    precision: 0
+                                                }
+                                            },
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            });
+                        </script>
+                    </div>
+                </div>
+
                 <!-- System-Info Box moved here -->
                 <div class="postbox metzler-webshield-postbox">
                     <h2 class="hndle">

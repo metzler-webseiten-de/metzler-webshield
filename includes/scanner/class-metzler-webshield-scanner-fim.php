@@ -99,7 +99,7 @@ class Metzler_Webshield_Scanner_FIM {
                     $files[] = $path->getPathname();
                 }
             }
-        } catch (Exception ) {}
+        } catch (Exception $e) {}
         
         return $files;
     }

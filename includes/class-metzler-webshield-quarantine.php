@@ -129,7 +129,7 @@ class Metzler_Webshield_Quarantine {
         return false;
     }
     
-    public function get_files(): array|object|null {
+    public function get_files() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_quarantine'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         return $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter

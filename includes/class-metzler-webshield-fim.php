@@ -97,7 +97,7 @@ class Metzler_Webshield_FIM {
                     $files[] = $path->getPathname();
                 }
             }
-        } catch (Exception ) {}
+        } catch (Exception $e) {}
         
         return $files;
     }

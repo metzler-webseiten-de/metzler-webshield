@@ -200,12 +200,22 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
                                     document.getElementById('metzler-chart-loader').innerHTML = '<?php echo esc_js(__("Could not load statistics.", "metzler-webshield")); ?>';
                                     return;
                                 }
+                                
+                                // Convert API UTC timestamps to the admin's local browser timezone
+                                let displayLabels = data.labels;
+                                if (data.timestamps && data.timestamps.length > 0) {
+                                    displayLabels = data.timestamps.map(ts => {
+                                        const date = new Date(ts);
+                                        // Format as HH:00 in local timezone
+                                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    });
+                                }
 
                                 const ctx = document.getElementById('metzlerGlobalAttacksChart').getContext('2d');
                                 new Chart(ctx, {
                                     type: 'line',
                                     data: {
-                                        labels: data.labels,
+                                        labels: displayLabels,
                                         datasets: [{
                                             label: '<?php echo esc_js(__("Blocked Attacks", "metzler-webshield")); ?>',
                                             data: data.data,

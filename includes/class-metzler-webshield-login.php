@@ -20,9 +20,10 @@ class Metzler_Webshield_Login {
                 const tokenName = '{$token_name}';
 
                 var setHuman = function() { isHuman = true; };
-                document.addEventListener('mousemove', setHuman, {once: true});
-                document.addEventListener('keydown', setHuman, {once: true});
-                document.addEventListener('touchstart', setHuman, {once: true});
+                const events = ['mousemove', 'keydown', 'touchstart', 'click', 'scroll', 'input', 'change'];
+                events.forEach(function(ev) {
+                    document.addEventListener(ev, setHuman, {once: true, passive: true});
+                });
 
                 setTimeout(function() {
                     const input = document.createElement('input');

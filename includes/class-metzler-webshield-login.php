@@ -4,6 +4,7 @@ class Metzler_Webshield_Login {
 
     public function __construct() {
         add_action( "login_enqueue_scripts", array( $this, "add_login_js" ) );
+        add_action( "wp_enqueue_scripts", array( $this, "add_login_js" ) );
         add_filter( "authenticate", array( $this, "verify_login_js" ), 20, 3 );
     }
 
@@ -14,8 +15,11 @@ class Metzler_Webshield_Login {
         
         $js = "
         document.addEventListener('DOMContentLoaded', function() {
-            const loginForm = document.getElementById('loginform');
-            if (loginForm) {
+            // Find all forms that contain a password field (Login, Register, etc.)
+            const allForms = document.querySelectorAll('form');
+            const targetForms = Array.from(allForms).filter(form => form.querySelector('input[type=\"password\"]'));
+            
+            if (targetForms.length > 0) {
                 let isHuman = false;
                 const tokenName = '{$token_name}';
 
@@ -26,34 +30,36 @@ class Metzler_Webshield_Login {
                 });
 
                 setTimeout(function() {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'metzler_webshield_bot_token';
-
                     const raw = '{$nonce}';
                     const obf = [];
                     for (let i = 0; i < raw.length; i++) obf.push(raw.charCodeAt(i) + 5);
                     
-                    loginForm.addEventListener('submit', function(e) {
-                        if (!isHuman) {
-                            e.preventDefault();
-                            const msg = '{$msg}';
-                            const errorDiv = document.createElement('div');
-                            errorDiv.id = 'login_error';
-                            errorDiv.className = 'notice notice-error';
-                            errorDiv.innerHTML = '<p><strong>' + msg + '</strong></p>';
-                            const existingError = document.getElementById('login_error');
-                            if (existingError) existingError.replaceWith(errorDiv);
-                            else loginForm.parentNode.insertBefore(errorDiv, loginForm);
-                            return;
-                        }
-                        let clear = '';
-                        for (let j = 0; j < obf.length; j++) clear += String.fromCharCode(obf[j] - 5);
-                        input.value = clear;
+                    targetForms.forEach(function(loginForm) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'metzler_webshield_bot_token';
                         
-                        if (!document.querySelector('input[name=metzler_webshield_bot_token]')) {
-                            loginForm.appendChild(input);
-                        }
+                        loginForm.addEventListener('submit', function(e) {
+                            if (!isHuman) {
+                                e.preventDefault();
+                                const msg = '{$msg}';
+                                const errorDiv = document.createElement('div');
+                                errorDiv.id = 'login_error';
+                                errorDiv.className = 'notice notice-error wppb-error';
+                                errorDiv.innerHTML = '<p><strong>' + msg + '</strong></p>';
+                                const existingError = document.getElementById('login_error');
+                                if (existingError) existingError.replaceWith(errorDiv);
+                                else loginForm.parentNode.insertBefore(errorDiv, loginForm);
+                                return;
+                            }
+                            let clear = '';
+                            for (let j = 0; j < obf.length; j++) clear += String.fromCharCode(obf[j] - 5);
+                            input.value = clear;
+                            
+                            if (!loginForm.querySelector('input[name=metzler_webshield_bot_token]')) {
+                                loginForm.appendChild(input);
+                            }
+                        });
                     });
                 }, 500);
             }

@@ -127,7 +127,7 @@ class Metzler_Webshield_Scanner_Plugins {
                             $relative_path = ltrim(str_replace(wp_normalize_path($plugin_dir), '', wp_normalize_path($local_file)), '/');
                             $relative_path = str_replace('\\', '/', $relative_path); // normalize for WP API
                             
-                            if ( ! isset($data['files'][$relative_path]) ) {
+                            if ( ! isset($checksums_data['files'][$relative_path]) ) {
                                 global $wpdb;
                                 $full_relative = ltrim(str_replace(ABSPATH, '', $local_file), '/\\');
                                 $full_relative = str_replace('\\', '/', $full_relative);

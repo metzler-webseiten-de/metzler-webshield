@@ -116,8 +116,13 @@ class Metzler_Webshield_Scanner_Core {
                     }
                     
                     if ( ! $is_valid ) {
-                        /* translators: %s: file path */
-                        Metzler_Webshield_Logger::log(sprintf( __("Core file modified: %s", "metzler-webshield"), esc_html($file) ), "core", "error");
+                        $whitelist = get_option('metzler_webshield_whitelist', array());
+                        if ( ! in_array($file, $whitelist) ) {
+                            $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($file).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
+                            $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($file).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
+                            /* translators: 1: file path, 2: action buttons */
+                            Metzler_Webshield_Logger::log(sprintf( __("Core file modified: %1$s%2$s", "metzler-webshield"), esc_html($file), $actions ), "core", "error");
+                        }
                     }
                 }
             }

@@ -102,13 +102,12 @@ class Metzler_Webshield_Scanner_Plugins {
                             }
                             
                             if ( ! $is_valid ) {
-                                // Check FIM Baseline
-                                global $wpdb;
+                                // Check Explicit Whitelist
                                 $relative_path = ltrim(str_replace(ABSPATH, '', $local_file), '/\\');
                                 $relative_path = str_replace('\\', '/', $relative_path);
+                                $whitelist = get_option('metzler_webshield_whitelist', array());
                                 
-                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
-                                if ( ! $baseline || $baseline->file_hash !== $actual_hash ) {
+                                if ( ! in_array($relative_path, $whitelist) ) {
                                     $modifications_found++;
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
@@ -128,12 +127,11 @@ class Metzler_Webshield_Scanner_Plugins {
                             $relative_path = str_replace('\\', '/', $relative_path); // normalize for WP API
                             
                             if ( ! isset($checksums_data['files'][$relative_path]) ) {
-                                global $wpdb;
                                 $full_relative = ltrim(str_replace(ABSPATH, '', $local_file), '/\\');
                                 $full_relative = str_replace('\\', '/', $full_relative);
+                                $whitelist = get_option('metzler_webshield_whitelist', array());
                                 
-                                $baseline = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM {$wpdb->prefix}metzler_webshield_fim WHERE file_path = %s", $full_relative)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
-                                if ( ! $baseline || $baseline->file_hash !== md5_file($local_file) ) {
+                                if ( ! in_array($full_relative, $whitelist) ) {
                                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($full_relative).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($full_relative).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                                     /* translators: 1: plugin name, 2: file name, 3: action buttons */

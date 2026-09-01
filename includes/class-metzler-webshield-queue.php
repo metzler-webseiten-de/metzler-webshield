@@ -232,6 +232,13 @@ class Metzler_Webshield_Queue {
         $fim = new Metzler_Webshield_FIM();
         $fim->accept_file($path);
         
+        // Explicitly whitelist this path so it overrides strict WP.org checksum checks
+        $whitelist = get_option('metzler_webshield_whitelist', array());
+        if ( !in_array($path, $whitelist) ) {
+            $whitelist[] = $path;
+            update_option('metzler_webshield_whitelist', $whitelist);
+        }
+        
         Metzler_Webshield_Logger::resolve_path_logs($path); // Delete old warnings
         /* translators: %s: file path */
         Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");

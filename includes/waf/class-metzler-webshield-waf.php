@@ -62,7 +62,11 @@ class Metzler_Webshield_WAF {
         // 2. Missing Accept Header on GET requests
         if ( !isset($_SERVER['HTTP_ACCEPT']) && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET' ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            if ( ! str_contains( $uri, 'xmlrpc.php' ) && ! str_contains( $uri, 'wp-json' ) ) {
+            
+            // Allow known crawlers that sometimes drop Accept headers (e.g., Google-Read-Aloud)
+            $is_known_bot = preg_match('/Googlebot|Google-Read-Aloud|bingbot|YandexBot|Applebot|DuckDuckBot|Slurp|Baiduspider/i', $user_agent);
+            
+            if ( ! $is_known_bot && ! str_contains( $uri, 'xmlrpc.php' ) && ! str_contains( $uri, 'wp-json' ) ) {
                 $this->block_request( 'Browser_Integrity', 'Empty Accept Header' );
             }
         }

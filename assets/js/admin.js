@@ -517,6 +517,20 @@ jQuery(document).ready(function($) {
     });
 
     // --- Licensing ---
+    $('#metzler-webshield-license-email').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#btn-request-license').click();
+        }
+    });
+
+    $('#metzler-webshield-license-token').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#btn-verify-license').click();
+        }
+    });
+
     $('#btn-request-license').on('click', function() {
         const btn = $(this);
         const email = $('#metzler-webshield-license-email').val();

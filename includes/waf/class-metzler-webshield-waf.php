@@ -171,6 +171,9 @@ class Metzler_Webshield_WAF {
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $request_method = $_SERVER['REQUEST_METHOD'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        if ( empty($request_method) ) {
+            $request_method = (php_sapi_name() === 'cli') ? 'CLI' : 'UNKNOWN';
+        }
         $domain = $_SERVER['HTTP_HOST'] ?? ( $_SERVER['SERVER_NAME'] ?? 'unknown' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
         $headers = array();

@@ -71,6 +71,11 @@ class Metzler_Webshield {
         
         // WAF Rules Sync (Hourly)
         add_action( 'metzler_webshield_sync_waf_rules', array( $this, 'cron_sync_waf_rules' ) );
+
+        // Ensure background crons remain scheduled
+        if ( is_admin() ) {
+            add_action( 'admin_init', array( 'Metzler_Webshield', 'ensure_scheduled_crons' ) );
+        }
     }
 
     public function cron_verify_license(): void {
@@ -266,21 +271,7 @@ class Metzler_Webshield {
         return $schedules;
     }
 
-    public static function activate(): void {
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-queue.php';
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-fim.php';
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-quarantine.php';
-        Metzler_Webshield_Logger::create_table();
-        Metzler_Webshield_Queue::create_table();
-        Metzler_Webshield_FIM::create_table();
-        Metzler_Webshield_Quarantine::create_table();
-        
-        // Auto-Enable WAF on activation
-        if ( get_option('metzler_webshield_enable_waf', false) === false ) {
-            update_option('metzler_webshield_enable_waf', '1');
-        }
-        
+    public static function ensure_scheduled_crons(): void {
         // Schedule daily cronjob if not already scheduled
         if ( ! wp_next_scheduled( 'metzler_webshield_daily_scan' ) ) {
             // Schedule for 3:00 AM local time tomorrow
@@ -302,6 +293,24 @@ class Metzler_Webshield {
         if ( ! wp_next_scheduled( 'metzler_webshield_sync_waf_rules' ) ) {
             wp_schedule_event( time(), 'hourly', 'metzler_webshield_sync_waf_rules' );
         }
+    }
+
+    public static function activate(): void {
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-queue.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-fim.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-quarantine.php';
+        Metzler_Webshield_Logger::create_table();
+        Metzler_Webshield_Queue::create_table();
+        Metzler_Webshield_FIM::create_table();
+        Metzler_Webshield_Quarantine::create_table();
+        
+        // Auto-Enable WAF on activation
+        if ( get_option('metzler_webshield_enable_waf', false) === false ) {
+            update_option('metzler_webshield_enable_waf', '1');
+        }
+        
+        self::ensure_scheduled_crons();
     }
 
     public function cron_sync_waf_rules(): void {

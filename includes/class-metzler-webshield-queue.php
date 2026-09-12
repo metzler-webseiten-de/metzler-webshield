@@ -412,7 +412,8 @@ class Metzler_Webshield_Queue {
             
             $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
             if ( ! $task ) {
-                Metzler_Webshield_Logger::log(__("Automatic background scan completed successfully.", "metzler-webshield"), "system" );
+                update_option('metzler_webshield_last_scan', current_time('mysql'));
+                Metzler_Webshield_Logger::log(__("Automatic background scan completed successfully.", "metzler-webshield"), "system", "success" );
                 break;
             }
             

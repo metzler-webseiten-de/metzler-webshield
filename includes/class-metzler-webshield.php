@@ -271,7 +271,27 @@ class Metzler_Webshield {
         return $schedules;
     }
 
+    public static function protect_upload_dir(): void {
+        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+        if ( ! is_dir($upload_dir) ) {
+            @mkdir($upload_dir, 0755, true); // phpcs:ignore
+        }
+
+        $htaccess = $upload_dir . '/.htaccess';
+        if ( ! file_exists($htaccess) ) {
+            $content = "# Deny direct web access to security data\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order Deny,Allow\n    Deny from all\n</IfModule>\n";
+            @file_put_contents($htaccess, $content); // phpcs:ignore
+        }
+
+        $index = $upload_dir . '/index.php';
+        if ( ! file_exists($index) ) {
+            @file_put_contents($index, "<?php // Silence is golden."); // phpcs:ignore
+        }
+    }
+
     public static function ensure_scheduled_crons(): void {
+        self::protect_upload_dir();
+
         // Schedule daily cronjob if not already scheduled
         if ( ! wp_next_scheduled( 'metzler_webshield_daily_scan' ) ) {
             // Schedule for 3:00 AM local time tomorrow
@@ -310,6 +330,7 @@ class Metzler_Webshield {
             update_option('metzler_webshield_enable_waf', '1');
         }
         
+        self::protect_upload_dir();
         self::ensure_scheduled_crons();
     }
 

@@ -204,6 +204,12 @@ class Metzler_Webshield_WAF {
         if ( ! is_dir($upload_dir) ) {
             @mkdir($upload_dir, 0755, true); // phpcs:ignore
         }
+        if ( ! file_exists($upload_dir . '/.htaccess') ) {
+            @file_put_contents($upload_dir . '/.htaccess', "# Deny direct web access to security data\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order Deny,Allow\n    Deny from all\n</IfModule>\n"); // phpcs:ignore
+        }
+        if ( ! file_exists($upload_dir . '/index.php') ) {
+            @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
+        }
         $telemetry_file = $upload_dir . '/telemetry.jsonl';
         @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX); // phpcs:ignore
         

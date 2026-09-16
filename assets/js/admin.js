@@ -13,6 +13,37 @@ jQuery(document).ready(function($) {
         toast.stop(true, true).fadeIn(300).delay(4000).fadeOut(300);
     }
 
+    // --- Clean Confirmation Modal ---
+    function showConfirm(message, onConfirm, title) {
+        title = title || (window.metzler_webshield_ajax && metzler_webshield_ajax.i18n && metzler_webshield_ajax.i18n.confirm_title ? metzler_webshield_ajax.i18n.confirm_title : 'Bestätigung erforderlich');
+        let modal = $('#metzler-webshield-confirm-modal');
+        if (modal.length === 0) {
+            modal = $(`
+                <div id="metzler-webshield-confirm-modal" style="display:none; position:fixed; inset:0; z-index:9999999; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+                    <div style="background:#fff; border-radius:6px; max-width:420px; width:90%; padding:22px 24px; box-shadow:0 8px 24px rgba(0,0,0,0.2); border:1px solid #c3c4c7; box-sizing:border-box;">
+                        <h3 class="metzler-modal-title" style="margin:0 0 10px 0; font-size:15px; font-weight:600; color:#1d2327;"></h3>
+                        <p class="metzler-modal-body" style="margin:0 0 20px 0; font-size:13px; color:#50575e; line-height:1.5;"></p>
+                        <div style="display:flex; justify-content:flex-end; gap:8px;">
+                            <button type="button" class="button metzler-modal-cancel" style="min-height:30px;">Abbrechen</button>
+                            <button type="button" class="button button-primary metzler-modal-confirm" style="min-height:30px;">Bestätigen</button>
+                        </div>
+                    </div>
+                </div>
+            `).appendTo('body');
+        }
+        modal.find('.metzler-modal-title').text(title);
+        modal.find('.metzler-modal-body').text(message);
+        modal.css('display', 'flex');
+
+        modal.off('click', '.metzler-modal-confirm').on('click', '.metzler-modal-confirm', function() {
+            modal.hide();
+            if (typeof onConfirm === 'function') onConfirm();
+        });
+        modal.off('click', '.metzler-modal-cancel').on('click', '.metzler-modal-cancel', function() {
+            modal.hide();
+        });
+    }
+
     let scanInProgress = false;
     
     let issuesFound = 0;
@@ -258,19 +289,19 @@ jQuery(document).ready(function($) {
 
     $('#btn-cancel-scan').on('click', function(e) {
         e.preventDefault();
-        if(!confirm(metzler_webshield_ajax.i18n.confirm_cancel_scan)) return;
-        scanInProgress = false;
-        $(this).hide();
-        $('#scan-progress-wrapper').hide();
-        $('#metzler-webshield-scan-controls').show();
-        
-        $.post(metzler_webshield_ajax.ajax_url, {
-            _wpnonce: metzler_webshield_ajax.nonce,
-            action: 'metzler_webshield_cancel_scan'
-        }, function(response) {
-            setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_scan_aborted, metzler_webshield_ajax.i18n.hero_aborted_desc);
-            fetchLogs();
+        showConfirm(metzler_webshield_ajax.i18n.confirm_cancel_scan, function() {
+            scanInProgress = false;
+            $('#btn-cancel-scan').hide();
+            $('#scan-progress-wrapper').hide();
+            $('#metzler-webshield-scan-controls').show();
             
+            $.post(metzler_webshield_ajax.ajax_url, {
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_cancel_scan'
+            }, function(response) {
+                setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_scan_aborted, metzler_webshield_ajax.i18n.hero_aborted_desc);
+                fetchLogs();
+            });
         });
     });
 
@@ -304,10 +335,10 @@ jQuery(document).ready(function($) {
     $('#btn-refresh-logs').on('click', fetchLogs);
     
     $('#btn-clear-logs').on('click', function() {
-        if(confirm(metzler_webshield_ajax.i18n.confirm_clear_log)) {
+        showConfirm(metzler_webshield_ajax.i18n.confirm_clear_log, function() {
             $.post(metzler_webshield_ajax.ajax_url, {
-            _wpnonce: metzler_webshield_ajax.nonce,
-            action: 'metzler_webshield_clear_logs'
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_clear_logs'
             }, function(response) {
                 if(response.success) {
                     fetchLogs(function() {
@@ -316,7 +347,7 @@ jQuery(document).ready(function($) {
                     });
                 }
             });
-        }
+        });
     });
     
     $('#btn-create-baseline').on('click', function() {
@@ -356,23 +387,24 @@ jQuery(document).ready(function($) {
 
     $(document).on('click', '.metzler-webshield-delete-user', function(e) {
         e.preventDefault();
-        if (!confirm(metzler_webshield_ajax.i18n.delete_confirm)) return;
         const btn = $(this);
         const userId = btn.data('user-id');
-        btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.deleting);
-        $.post(metzler_webshield_ajax.ajax_url, {
-            _wpnonce: metzler_webshield_ajax.nonce,
-            action: 'metzler_webshield_delete_user',
-            user_id: userId
-        }, function(response) {
-            if(response.success) {
-                btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.deleted_ghost + '</span>');
-                btn.remove();
-                fetchLogs();
-            } else {
-                alert(response.data.message || metzler_webshield_ajax.i18n.delete_error);
-                btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.delete_user);
-            }
+        showConfirm(metzler_webshield_ajax.i18n.delete_confirm, function() {
+            btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.deleting);
+            $.post(metzler_webshield_ajax.ajax_url, {
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_delete_user',
+                user_id: userId
+            }, function(response) {
+                if(response.success) {
+                    btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.deleted_ghost + '</span>');
+                    btn.remove();
+                    fetchLogs();
+                } else {
+                    showToast(response.data.message || metzler_webshield_ajax.i18n.delete_error, 'error');
+                    btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.delete_user);
+                }
+            });
         });
     });
 
@@ -453,12 +485,13 @@ jQuery(document).ready(function($) {
     });
 
     $(document).on('click', '.metzler-webshield-q-delete', function() {
-        if(!confirm(metzler_webshield_ajax.i18n.confirm_delete)) return;
         const id = $(this).data('id');
-        $.post(metzler_webshield_ajax.ajax_url, {
-            _wpnonce: metzler_webshield_ajax.nonce,
-            action: 'metzler_webshield_quarantine_delete', id: id }, function(res) {
-            if(res.success) loadQuarantine();
+        showConfirm(metzler_webshield_ajax.i18n.confirm_delete, function() {
+            $.post(metzler_webshield_ajax.ajax_url, {
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_quarantine_delete', id: id }, function(res) {
+                if(res.success) loadQuarantine();
+            });
         });
     });
     
@@ -610,13 +643,13 @@ jQuery(document).ready(function($) {
     });
 
     $('#btn-remove-license').on('click', function() {
-        if (!confirm(metzler_webshield_ajax.i18n.confirm_remove)) return;
-        
-        $.post(metzler_webshield_ajax.ajax_url, {
-            _wpnonce: metzler_webshield_ajax.nonce,
-            action: 'metzler_webshield_remove_license'
-        }, function(res) {
-            location.reload();
+        showConfirm(metzler_webshield_ajax.i18n.confirm_remove, function() {
+            $.post(metzler_webshield_ajax.ajax_url, {
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_remove_license'
+            }, function(res) {
+                location.reload();
+            });
         });
     });
     // Initial Load handled via PHP SSR for better performance

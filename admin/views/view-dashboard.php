@@ -49,6 +49,19 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         $current_tab = 'tab-dashboard';
     }
     ?>
+    <div class="metzler-webshield-brand-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 12px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="<?php echo esc_url( METZLER_WEBSHIELD_PLUGIN_URL . 'assets/images/logo-icon-128.png' ); ?>" alt="Metzler Webshield" style="width: 44px; height: 44px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div>
+                <h1 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; color: #1d2327;">Metzler Webshield</h1>
+                <p style="margin: 3px 0 0; font-size: 13px; color: #646970;">
+                    <?php esc_html_e( 'Enterprise Security & Real-Time Firewall', 'metzler-webshield' ); ?>
+                    <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #e0e0e0; color: #3c434a;">v<?php echo esc_html( METZLER_WEBSHIELD_VERSION ); ?></span>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <nav class="nav-tab-wrapper metzler-webshield-nav-tabs" style="margin-bottom: 20px;">
         <a href="#tab-dashboard" class="nav-tab <?php echo $current_tab === 'tab-dashboard' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-dashboard"><?php echo esc_html__("Overview", "metzler-webshield"); ?></a>
         <a href="#tab-logs" class="nav-tab <?php echo $current_tab === 'tab-logs' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-logs"><?php echo esc_html__("Log", "metzler-webshield"); ?></a>

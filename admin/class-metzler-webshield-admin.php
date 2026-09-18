@@ -25,7 +25,7 @@ class Metzler_Webshield_Admin {
             'manage_options', 
             'metzler-webshield', 
             array( $this, 'display_plugin_setup_page' ),
-            'dashicons-shield', 
+            plugins_url( 'assets/images/logo-icon-128.png', METZLER_WEBSHIELD_PLUGIN_FILE ), 
             80
         );
     }

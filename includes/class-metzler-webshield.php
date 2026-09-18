@@ -28,12 +28,21 @@ class Metzler_Webshield {
         
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-login.php';
         
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-updater.php';
+
         if ( is_admin() ) {
             require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'admin/class-metzler-webshield-admin.php';
         }
     }
     
     public function run(): void {
+        $updater = new Metzler_Webshield_Updater(
+            METZLER_WEBSHIELD_PLUGIN_FILE,
+            METZLER_WEBSHIELD_VERSION,
+            METZLER_WEBSHIELD_API_URL
+        );
+        $updater->init();
+
         if ( is_admin() ) {
             $admin = new Metzler_Webshield_Admin();
             $admin->init();
@@ -103,6 +112,14 @@ class Metzler_Webshield {
                 // Token is invalid/revoked! Lock the plugin.
                 delete_option( 'metzler_webshield_is_licensed' );
                 update_option( 'metzler_webshield_enable_telemetry', '0' );
+            } else {
+                if ( isset( $data['tier'] ) ) {
+                    $tier = sanitize_text_field( $data['tier'] );
+                    update_option( 'metzler_webshield_license_tier', $tier );
+                }
+                if ( ! empty( $data['email'] ) ) {
+                    update_option( 'metzler_webshield_verified_email', sanitize_email( $data['email'] ) );
+                }
             }
         }
     }

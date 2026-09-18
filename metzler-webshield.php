@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Metzler Webshield
  * Plugin URI:        https://metzler-webshield.de
- * Description:       DSGVO-konforme WordPress AntiVirus & Firewall Solution made in Germany.
- * Version:           1.0.0
+ * Description:       GDPR-compliant WordPress AntiVirus & Firewall (WAF) solution made in Germany.
+ * Version:           1.0.1
  * Author:            metzler-webseiten.de
  * Author URI:        https://metzler-webseiten.de
  * License:           GPL-2.0+
@@ -11,6 +11,7 @@
  * Requires PHP:      7.4
  * Requires at least: 6.0
  * Tested up to:      7.1
+ * Update URI:        https://api.metzler-webshield.de/api/plugin/update-check
  */
 
 // If this file is called directly, abort.
@@ -18,8 +19,9 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
-const METZLER_WEBSHIELD_VERSION = '1.0.0';
+const METZLER_WEBSHIELD_VERSION = '1.0.1';
 const METZLER_WEBSHIELD_API_URL = 'https://api.metzler-webshield.de/api';
+define( 'METZLER_WEBSHIELD_PLUGIN_FILE', __FILE__ );
 define( 'METZLER_WEBSHIELD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'METZLER_WEBSHIELD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

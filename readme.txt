@@ -3,7 +3,7 @@ Contributors: metzler-webseiten, metzlerwp
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -48,3 +48,19 @@ Yes. The plugin syncs the latest threat definitions from our Threat Intelligence
 
 = Does it conflict with caching plugins? =
 No. Since Metzler Webshield runs early, it typically blocks bad requests before they hit your cache.
+
+== Changelog ==
+
+= 1.0.1 =
+* Added self-hosted automatic update mechanism with WordPress 5.8+ Update URI protection.
+* Added Pro tier status indicator, expiration alerts, and direct dashboard integration.
+* Added WordPress Dashboard Widget showing blocked bot statistics over the last 24 hours.
+* Improved File Integrity Monitoring (FIM) database indexing using MD5 path hashes to resolve collisions on long file paths (e.g. Google Site Kit).
+* Enhanced heuristic file scanner with AST tokenizer to safely allow directory listing dummies (WPForms, WordPress Core) while strictly blocking web shells and payloads.
+* Fixed deep-linking for log tabs (#tab-logs) and ensured logs load properly on initial dashboard view.
+* Added whitelist verification across file and integrity scans for resolved false positives.
+* Improved resilience against network timeouts and Cloudflare rate limiting with negative caching and jitter.
+* Fully localized all admin interface strings into English.
+
+= 1.0.0 =
+* Initial release with Real-Time WAF, Malware Scanner, FIM, and Quarantine.

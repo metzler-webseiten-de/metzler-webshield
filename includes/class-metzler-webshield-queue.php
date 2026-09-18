@@ -352,6 +352,10 @@ class Metzler_Webshield_Queue {
         Metzler_Webshield_Logger::cleanup_old_logs();
         
         update_option('metzler_webshield_last_scan_start', current_time('mysql'));
+        
+        // Reset threat notice dismissals so admins are re-notified if threats exist after scan
+        $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_mws_threat_notice_dismissed_%' OR option_name LIKE '_transient_timeout_mws_threat_notice_dismissed_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
         Metzler_Webshield_Logger::log(__("Automatic background scan (cron) started...", "metzler-webshield"), "system" );
 
         $tasks = array();

@@ -135,18 +135,29 @@ jQuery(document).ready(function($) {
         const tbody = $('#metzler-webshield-log-body');
         tbody.empty();
         
-        if (logs.length === 0) {
+        if (!logs || logs.length === 0) {
             tbody.append('<tr><td colspan="3" style="text-align:center;">' + metzler_webshield_ajax.i18n.log_empty + '</td></tr>');
             return;
         }
 
         logs.forEach(log => {
-            const time = new Date(log.time).toLocaleTimeString();
-            const trClass = 'metzler-webshield-row-' + log.severity;
+            let timeStr = log.time || '';
+            try {
+                if (log.time) {
+                    const dateObj = new Date(log.time.replace(' ', 'T'));
+                    if (!isNaN(dateObj.getTime())) {
+                        timeStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                }
+            } catch (e) {
+                timeStr = log.time;
+            }
+
+            const trClass = 'metzler-webshield-row-' + (log.severity || 'info');
             const tr = `<tr class="${trClass}">
-                <td>${time}</td>
-                <td><span class="metzler-webshield-log-module">${log.type}</span></td>
-                <td class="metzler-webshield-log-severity-${log.severity}">${log.message}</td>
+                <td>${timeStr}</td>
+                <td><span class="metzler-webshield-log-module">${log.type || 'system'}</span></td>
+                <td class="metzler-webshield-log-severity-${log.severity || 'info'}">${log.message}</td>
             </tr>`;
             tbody.append(tr);
         });
@@ -431,16 +442,108 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // --- Tab Switching ---
-    $('.metzler-webshield-tab-link').on('click', function(e) {
-        e.preventDefault();
-        const targetTab = $(this).data('tab');
+    // --- Tab Switching & Deep Linking ---
+    function normalizeTabId(rawId) {
+        if (!rawId) return '';
+        var clean = String(rawId).replace(/^#/, '').trim().toLowerCase();
+        var aliases = {
+            'overview': 'tab-dashboard',
+            'dashboard': 'tab-dashboard',
+            'tab-overview': 'tab-dashboard',
+            'tab-dashboard': 'tab-dashboard',
+            'log': 'tab-logs',
+            'logs': 'tab-logs',
+            'tab-log': 'tab-logs',
+            'tab-logs': 'tab-logs',
+            'quarantine': 'tab-quarantine',
+            'tab-quarantine': 'tab-quarantine',
+            'setting': 'tab-settings',
+            'settings': 'tab-settings',
+            'tab-setting': 'tab-settings',
+            'tab-settings': 'tab-settings',
+            'license': 'tab-license',
+            'licence': 'tab-license',
+            'tab-license': 'tab-license',
+            'tab-licence': 'tab-license'
+        };
+
+        if (aliases[clean]) {
+            return aliases[clean];
+        }
+
+        if (clean.indexOf('tab-') !== 0) {
+            clean = 'tab-' + clean;
+        }
+        return clean;
+    }
+
+    function switchTab(targetTab, updateHash) {
+        var normalized = normalizeTabId(targetTab);
+        var tabContent = $('#' + normalized);
+        var tabLink = $('.metzler-webshield-tab-link[data-tab="' + normalized + '"]');
+
+        if (tabContent.length === 0) {
+            return false;
+        }
 
         $('.metzler-webshield-tab-link').removeClass('nav-tab-active');
-        $(this).addClass('nav-tab-active');
-        
+        tabLink.addClass('nav-tab-active');
+
         $('.metzler-webshield-tab-content').hide();
-        $('#' + targetTab).show();
+        tabContent.show();
+
+        if (updateHash !== false) {
+            if (window.history && window.history.replaceState) {
+                var newUrl = window.location.pathname + window.location.search + '#' + normalized;
+                window.history.replaceState(null, '', newUrl);
+            } else {
+                window.location.hash = normalized;
+            }
+        }
+
+        if (normalized === 'tab-logs') {
+            fetchLogs();
+        }
+
+        if (normalized === 'tab-quarantine') {
+            loadQuarantine();
+        }
+
+        return true;
+    }
+
+    $('.metzler-webshield-tab-link').on('click', function(e) {
+        e.preventDefault();
+        var targetTab = $(this).data('tab') || $(this).attr('href');
+        switchTab(targetTab, true);
+    });
+
+    $(document).on('click', 'a[href^="#tab-"], a[href^="#logs"], a[href^="#quarantine"], a[href^="#settings"], a[href^="#license"], a[href^="#overview"]', function(e) {
+        var href = $(this).attr('href');
+        if (switchTab(href, true)) {
+            e.preventDefault();
+        }
+    });
+
+    // Check initial tab on page load
+    function checkInitialTab() {
+        if (window.location.hash) {
+            switchTab(window.location.hash, false);
+        } else {
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('tab')) {
+                switchTab(urlParams.get('tab'), false);
+            }
+        }
+    }
+    checkInitialTab();
+    fetchLogs();
+
+    // Listen for browser back/forward or manual hash change
+    $(window).on('hashchange', function() {
+        if (window.location.hash) {
+            switchTab(window.location.hash, false);
+        }
     });
 
     // --- Quarantine ---
@@ -623,9 +726,9 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $('#btn-recheck-license').on('click', function() {
+    $(document).on('click', '#btn-recheck-license, .btn-recheck-license', function() {
         const btn = $(this);
-        const feedback = $('#license-recheck-feedback');
+        const feedback = btn.siblings('.metzler-webshield-action-feedback');
         btn.prop('disabled', true).text(metzler_webshield_ajax.i18n.rechecking);
         
         $.post(metzler_webshield_ajax.ajax_url, {
@@ -634,7 +737,7 @@ jQuery(document).ready(function($) {
         }, function(res) {
             if (res.success) {
                 feedback.css('color', 'green').text(metzler_webshield_ajax.i18n.license_valid);
-                setTimeout(function(){ feedback.text(''); btn.prop('disabled', false).text(metzler_webshield_ajax.i18n.recheck_now); }, 3000);
+                setTimeout(function(){ location.reload(); }, 1200);
             } else {
                 showToast(metzler_webshield_ajax.i18n.license_invalid, 'error');
                 setTimeout(function(){ location.reload(); }, 2000);
@@ -642,7 +745,7 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $('#btn-remove-license').on('click', function() {
+    $(document).on('click', '#btn-remove-license, .btn-remove-license', function() {
         showConfirm(metzler_webshield_ajax.i18n.confirm_remove, function() {
             $.post(metzler_webshield_ajax.ajax_url, {
                 _wpnonce: metzler_webshield_ajax.nonce,

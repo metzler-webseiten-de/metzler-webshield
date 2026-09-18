@@ -9,6 +9,13 @@ class Metzler_Webshield_Admin {
         add_action( 'wp_ajax_metzler_webshield_verify_license', array( $this, 'ajax_verify_license' ) );
         add_action( 'wp_ajax_metzler_webshield_recheck_license', array( $this, 'ajax_recheck_license' ) );
         add_action( 'wp_ajax_metzler_webshield_remove_license', array( $this, 'ajax_remove_license' ) );
+
+        // 1. Frontpage Dashboard Widget on wp-admin/index.php
+        add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
+
+        // 2. Global Persistent Admin Notice when threats are detected
+        add_action( 'admin_notices', array( $this, 'render_threat_admin_notice' ) );
+        add_action( 'wp_ajax_metzler_webshield_dismiss_threat_notice', array( $this, 'ajax_dismiss_threat_notice' ) );
     }
 
     public function add_plugin_admin_menu() {
@@ -163,9 +170,15 @@ class Metzler_Webshield_Admin {
         $data = json_decode( $body, true );
 
         if ( isset( $data['success'] ) && $data['success'] ) {
+            $tier = sanitize_text_field( $data['tier'] ?? 'free' );
+            $verified_email = ! empty( $data['email'] ) ? sanitize_email( $data['email'] ) : $email;
+
             update_option( 'metzler_webshield_license_token', $token );
-            update_option( 'metzler_webshield_verified_email', $email );
+            update_option( 'metzler_webshield_verified_email', $verified_email );
+            update_option( 'metzler_webshield_license_tier', $tier );
             update_option( 'metzler_webshield_is_licensed', true );
+            delete_option( 'metzler_webshield_pro_expired' );
+
             $telemetry_opt_in = sanitize_text_field(wp_unslash($_POST['telemetry'] ?? '0')) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.NonceVerification
             update_option( 'metzler_webshield_enable_telemetry', $telemetry_opt_in );
             // Save token to file for high-speed WAF access without DB overhead
@@ -177,7 +190,10 @@ class Metzler_Webshield_Admin {
             }
             @file_put_contents($upload_dir . '/waf.key', $token, LOCK_EX); // phpcs:ignore
 
-            wp_send_json_success( array( 'message' => __( 'License verified!', 'metzler-webshield' ) ) );
+            wp_send_json_success( array(
+                'tier'    => $tier,
+                'message' => __( 'License verified successfully!', 'metzler-webshield' ),
+            ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Invalid license key.', 'metzler-webshield' ) ) );
         }
@@ -199,18 +215,28 @@ class Metzler_Webshield_Admin {
         ) );
 
         if ( is_wp_error( $response ) ) {
-            wp_send_json_error();
+            wp_send_json_error( array( 'message' => $response->get_error_message() ) );
         }
 
         $body = wp_remote_retrieve_body( $response );
         $data = json_decode( $body, true );
 
         if ( isset( $data['success'] ) && $data['success'] ) {
-            wp_send_json_success();
+            $tier = sanitize_text_field( $data['tier'] ?? 'free' );
+            update_option( 'metzler_webshield_license_tier', $tier );
+            if ( ! empty( $data['email'] ) ) {
+                update_option( 'metzler_webshield_verified_email', sanitize_email( $data['email'] ) );
+            }
+            update_option( 'metzler_webshield_is_licensed', true );
+
+            wp_send_json_success( array(
+                'tier'    => $tier,
+                'message' => __( 'License status updated.', 'metzler-webshield' ),
+            ) );
         } else {
             update_option( 'metzler_webshield_is_licensed', false );
             update_option( 'metzler_webshield_enable_telemetry', '0' );
-            wp_send_json_error();
+            wp_send_json_error( array( 'message' => __( 'License verification failed.', 'metzler-webshield' ) ) );
         }
     }
 
@@ -222,11 +248,269 @@ class Metzler_Webshield_Admin {
         update_option( 'metzler_webshield_enable_telemetry', '0' );
         delete_option( 'metzler_webshield_license_token' );
         delete_option( 'metzler_webshield_verified_email' );
+        delete_option( 'metzler_webshield_license_tier' );
+        delete_option( 'metzler_webshield_pro_expired' );
         
         $upload_base = wp_upload_dir();
         @unlink($upload_base['basedir'] . '/metzler-webshield/waf.key'); // phpcs:ignore
         @unlink($upload_base['basedir'] . '/metzler-webshield/waf-rules.enc'); // phpcs:ignore
 
         wp_send_json_success( array( 'message' => __( 'License removed.', 'metzler-webshield' ) ) );
+    }
+
+    /**
+     * Register WordPress Frontpage Dashboard Widgets (wp-admin/index.php).
+     */
+    public function register_dashboard_widget(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        wp_add_dashboard_widget(
+            'metzler_webshield_dashboard_widget',
+            __( 'Metzler Webshield — Security Status', 'metzler-webshield' ),
+            array( $this, 'render_dashboard_widget' )
+        );
+
+        wp_add_dashboard_widget(
+            'metzler_webshield_bots_widget',
+            __( 'Metzler Webshield — Blocked Bots (24h)', 'metzler-webshield' ),
+            array( $this, 'render_bots_widget' )
+        );
+    }
+
+    /**
+     * Render the WordPress Frontpage Dashboard Widget.
+     */
+    public function render_dashboard_widget(): void {
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
+
+        $threats = Metzler_Webshield_Logger::get_active_threats( 5 );
+        $threat_count = Metzler_Webshield_Logger::count_active_threats();
+        $is_licensed = get_option( 'metzler_webshield_is_licensed', false );
+        $is_pro = $is_licensed && ( 'pro' === get_option( 'metzler_webshield_license_tier', 'free' ) );
+        $last_scan = get_option( 'metzler_webshield_last_scan' );
+        $last_scan_text = $last_scan ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_scan ) ) : esc_html__( 'Never', 'metzler-webshield' );
+        $settings_url = admin_url( 'admin.php?page=metzler-webshield' );
+
+        if ( $threat_count > 0 ) :
+            ?>
+            <div class="mws-dash-widget-alert" style="padding: 4px 0;">
+                <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+                    <span class="dashicons dashicons-warning" style="color: #d63638; font-size: 28px; width: 28px; height: 28px; margin-top: 2px;"></span>
+                    <div>
+                        <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #b32d2e;">
+                            <?php printf( esc_html( _n( '%d Security Risk Detected!', '%d Security Risks Detected!', $threat_count, 'metzler-webshield' ) ), $threat_count ); ?>
+                        </h4>
+                        <p style="margin: 0; color: #646970; font-size: 13px;">
+                            <?php esc_html_e( 'The automated scanner detected suspicious or modified files on your server.', 'metzler-webshield' ); ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="background: #fcf0f1; border-left: 4px solid #d63638; padding: 8px 12px; margin-bottom: 14px; border-radius: 2px;">
+                    <ul style="margin: 0; padding-left: 16px; font-size: 12px; color: #50575e; list-style: disc;">
+                        <?php foreach ( $threats as $threat ) : ?>
+                            <li style="margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <strong>[<?php echo esc_html( strtoupper( $threat->type ) ); ?>]</strong> <?php echo esc_html( $threat->message ); ?>
+                            </li>
+                        <?php endforeach; ?>
+                        <?php if ( $threat_count > count( $threats ) ) : ?>
+                            <li style="color: #646970; margin-top: 4px;">
+                                <em><?php printf( esc_html__( '+%d additional detected issues...', 'metzler-webshield' ), $threat_count - count( $threats ) ); ?></em>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; pt-2;">
+                    <span style="font-size: 12px; color: #646970;">
+                        <?php printf( esc_html__( 'Last Scan: %s', 'metzler-webshield' ), esc_html( $last_scan_text ) ); ?>
+                    </span>
+                    <a href="<?php echo esc_url( $settings_url ); ?>" class="button button-primary button-small">
+                        <?php esc_html_e( 'Review & Resolve in Webshield', 'metzler-webshield' ); ?> &rarr;
+                    </a>
+                </div>
+            </div>
+            <?php
+        else :
+            ?>
+            <div class="mws-dash-widget-clean" style="padding: 4px 0;">
+                <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+                    <span class="dashicons dashicons-shield" style="color: #00a32a; font-size: 28px; width: 28px; height: 28px; margin-top: 2px;"></span>
+                    <div>
+                        <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #1d2327;">
+                            <?php esc_html_e( 'Website Protected — No Threats Detected', 'metzler-webshield' ); ?>
+                        </h4>
+                        <p style="margin: 0; color: #646970; font-size: 13px;">
+                            <?php esc_html_e( 'All file integrity monitors and background guards are active. Bot attacks are neutralized automatically.', 'metzler-webshield' ); ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; padding: 8px 12px; background: #f6f7f7; border-radius: 4px; font-size: 12px; color: #50575e;">
+                    <span><strong><?php esc_html_e( 'Tier:', 'metzler-webshield' ); ?></strong> <?php echo $is_pro ? '<span style="color:#008a20; font-weight:600;">Pro Active</span>' : 'Community Free'; ?></span>
+                    <span><strong><?php esc_html_e( 'Last Scan:', 'metzler-webshield' ); ?></strong> <?php echo esc_html( $last_scan_text ); ?></span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="<?php echo esc_url( $settings_url ); ?>" class="button button-secondary button-small">
+                        <?php esc_html_e( 'Open Metzler Webshield', 'metzler-webshield' ); ?> &rarr;
+                    </a>
+                </div>
+            </div>
+            <?php
+        endif;
+    }
+
+    /**
+     * Render the Blocked Bots (24h) Dashboard Widget.
+     */
+    public function render_bots_widget(): void {
+        // Auto-flush pending telemetry buffer so counts are up-to-date
+        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
+        if ( file_exists( $upload_dir . '/telemetry.jsonl' ) && filesize( $upload_dir . '/telemetry.jsonl' ) > 0 ) {
+            if ( class_exists( 'Metzler_Webshield' ) ) {
+                $shield = new Metzler_Webshield();
+                $shield->cron_sync_telemetry();
+            }
+        }
+
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
+        $stats = Metzler_Webshield_Logger::get_24h_waf_stats();
+        $total = $stats['total'];
+        $categories = $stats['categories'];
+        $recent_events = $stats['recent_events'];
+        $logs_url = admin_url( 'admin.php?page=metzler-webshield#tab-logs' );
+        ?>
+        <div class="mws-dash-bots-widget" style="padding: 4px 0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f1;">
+                <div>
+                    <div style="font-size: 26px; font-weight: 700; color: #1d2327; line-height: 1.1;">
+                        <?php echo esc_html( number_format_i18n( $total ) ); ?>
+                    </div>
+                    <div style="font-size: 12px; color: #646970; margin-top: 2px;">
+                        <?php esc_html_e( 'Attacks & bots blocked in the last 24 hours', 'metzler-webshield' ); ?>
+                    </div>
+                </div>
+                <span class="dashicons dashicons-shield-alt" style="font-size: 32px; width: 32px; height: 32px; color: <?php echo $total > 0 ? '#2271b1' : '#787c82'; ?>;"></span>
+            </div>
+
+            <?php if ( ! empty( $categories ) ) : ?>
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #8c8f94; margin-bottom: 6px; letter-spacing: 0.5px;">
+                        <?php esc_html_e( 'Top Threat Types', 'metzler-webshield' ); ?>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <?php foreach ( array_slice( $categories, 0, 5, true ) as $cat_name => $cat_count ) : ?>
+                            <span style="background: #f0f0f1; border: 1px solid #dcdcde; border-radius: 3px; padding: 2px 7px; font-size: 11px; color: #3c434a;">
+                                <strong><?php echo esc_html( str_replace( '_', ' ', $cat_name ) ); ?>:</strong> <?php echo esc_html( number_format_i18n( $cat_count ) ); ?>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $recent_events ) ) : ?>
+                <div style="margin-bottom: 14px;">
+                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #8c8f94; margin-bottom: 6px; letter-spacing: 0.5px;">
+                        <?php esc_html_e( 'Recent Interceptions', 'metzler-webshield' ); ?>
+                    </div>
+                    <ul style="margin: 0; padding: 0; list-style: none; font-size: 12px;">
+                        <?php foreach ( $recent_events as $event ) : ?>
+                            <li style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dotted #f0f0f1;">
+                                <span style="font-family: monospace; color: #1d2327;">
+                                    <?php echo esc_html( $event['ip'] ); ?>
+                                    <span style="color: #646970; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;">
+                                        (<?php echo esc_html( str_replace( '_', ' ', $event['types'] ) ); ?>)
+                                    </span>
+                                </span>
+                                <span style="color: #8c8f94; font-size: 11px; white-space: nowrap;">
+                                    <?php echo esc_html( $event['time_human'] ); ?>
+                                </span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php elseif ( 0 === $total ) : ?>
+                <p style="margin: 0 0 14px; font-size: 13px; color: #646970;">
+                    <?php esc_html_e( 'No automated threats or malicious bots intercepted in the last 24 hours. The firewall is active and inspecting all incoming requests.', 'metzler-webshield' ); ?>
+                </p>
+            <?php endif; ?>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="<?php echo esc_url( $logs_url ); ?>" class="button button-secondary button-small">
+                    <?php esc_html_e( 'View Security Log', 'metzler-webshield' ); ?> &rarr;
+                </a>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render Global Persistent Admin Notice when server threats are detected.
+     */
+    public function render_threat_admin_notice(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        // Do not show duplicate banner on Metzler Webshield's own dashboard page
+        $screen = get_current_screen();
+        if ( $screen && 'toplevel_page_metzler-webshield' === $screen->id ) {
+            return;
+        }
+
+        // Check if user dismissed this notice (resets on next scan run)
+        $dismissed = get_transient( 'mws_threat_notice_dismissed_' . get_current_user_id() );
+        if ( $dismissed ) {
+            return;
+        }
+
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
+        $threat_count = Metzler_Webshield_Logger::count_active_threats();
+        if ( $threat_count <= 0 ) {
+            return;
+        }
+
+        $settings_url = admin_url( 'admin.php?page=metzler-webshield' );
+        $dismiss_nonce = wp_create_nonce( 'metzler_webshield_dismiss_notice' );
+        ?>
+        <div class="notice notice-error is-dismissible mws-threat-global-notice" data-mws-nonce="<?php echo esc_attr( $dismiss_nonce ); ?>">
+            <p style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0;">
+                <span class="dashicons dashicons-warning" style="color: #d63638; font-size: 20px;"></span>
+                <strong style="color: #b32d2e;"><?php esc_html_e( 'Metzler Webshield Security Alert:', 'metzler-webshield' ); ?></strong>
+                <span>
+                    <?php printf( esc_html( _n( 'The automated scanner detected %d security threat on your website.', 'The automated scanner detected %d security threats on your website.', $threat_count, 'metzler-webshield' ) ), $threat_count ); ?>
+                </span>
+                <a href="<?php echo esc_url( $settings_url ); ?>" class="button button-small button-primary" style="margin-left: 6px;">
+                    <?php esc_html_e( 'Review & Resolve', 'metzler-webshield' ); ?> &rarr;
+                </a>
+            </p>
+        </div>
+        <script>
+            jQuery(document).on('click', '.mws-threat-global-notice .notice-dismiss', function() {
+                var nonce = jQuery('.mws-threat-global-notice').data('mws-nonce');
+                jQuery.post(ajaxurl, {
+                    action: 'metzler_webshield_dismiss_threat_notice',
+                    nonce: nonce
+                });
+            });
+        </script>
+        <?php
+    }
+
+    /**
+     * Handle AJAX dismissal of the threat admin notice.
+     */
+    public function ajax_dismiss_threat_notice(): void {
+        check_ajax_referer( 'metzler_webshield_dismiss_notice', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die();
+        }
+
+        // Dismiss for 12 hours (cleared automatically when the next nightly scan runs)
+        set_transient( 'mws_threat_notice_dismissed_' . get_current_user_id(), true, 12 * HOUR_IN_SECONDS );
+        wp_send_json_success();
     }
 }

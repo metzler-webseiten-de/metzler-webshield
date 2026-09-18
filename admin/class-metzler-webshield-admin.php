@@ -16,6 +16,24 @@ class Metzler_Webshield_Admin {
         // 2. Global Persistent Admin Notice when threats are detected
         add_action( 'admin_notices', array( $this, 'render_threat_admin_notice' ) );
         add_action( 'wp_ajax_metzler_webshield_dismiss_threat_notice', array( $this, 'ajax_dismiss_threat_notice' ) );
+
+        // 3. Admin sidebar menu icon sizing
+        add_action( 'admin_head', array( $this, 'enqueue_admin_menu_styles' ) );
+    }
+
+    public function enqueue_admin_menu_styles(): void {
+        ?>
+        <style>
+            #adminmenu .toplevel_page_metzler-webshield .wp-menu-image img {
+                width: 20px !important;
+                height: 20px !important;
+                max-width: 20px !important;
+                max-height: 20px !important;
+                padding: 7px 0 0 0 !important;
+                border-radius: 3px;
+            }
+        </style>
+        <?php
     }
 
     public function add_plugin_admin_menu() {
@@ -25,7 +43,7 @@ class Metzler_Webshield_Admin {
             'manage_options', 
             'metzler-webshield', 
             array( $this, 'display_plugin_setup_page' ),
-            plugins_url( 'assets/images/logo-icon-128.png', METZLER_WEBSHIELD_PLUGIN_FILE ), 
+            plugins_url( 'assets/images/logo-icon-20.png', METZLER_WEBSHIELD_PLUGIN_FILE ), 
             80
         );
     }
@@ -337,7 +355,7 @@ class Metzler_Webshield_Admin {
             ?>
             <div class="mws-dash-widget-clean" style="padding: 4px 0;">
                 <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
-                    <span class="dashicons dashicons-shield" style="color: #00a32a; font-size: 28px; width: 28px; height: 28px; margin-top: 2px;"></span>
+                    <img src="<?php echo esc_url( METZLER_WEBSHIELD_PLUGIN_URL . 'assets/images/logo-icon-128.png' ); ?>" alt="Metzler Webshield" style="width: 32px; height: 32px; border-radius: 7px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-top: 2px; flex-shrink: 0;">
                     <div>
                         <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #1d2327;">
                             <?php esc_html_e( 'Website Protected — No Threats Detected', 'metzler-webshield' ); ?>
@@ -368,8 +386,9 @@ class Metzler_Webshield_Admin {
      */
     public function render_bots_widget(): void {
         // Auto-flush pending telemetry buffer so counts are up-to-date
-        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-        if ( file_exists( $upload_dir . '/telemetry.jsonl' ) && filesize( $upload_dir . '/telemetry.jsonl' ) > 0 ) {
+        $upload_base = wp_upload_dir();
+        $telemetry_file = $upload_base['basedir'] . '/metzler-webshield/telemetry.jsonl';
+        if ( file_exists( $telemetry_file ) && filesize( $telemetry_file ) > 0 ) {
             if ( class_exists( 'Metzler_Webshield' ) ) {
                 $shield = new Metzler_Webshield();
                 $shield->cron_sync_telemetry();
@@ -393,7 +412,7 @@ class Metzler_Webshield_Admin {
                         <?php esc_html_e( 'Attacks & bots blocked in the last 24 hours', 'metzler-webshield' ); ?>
                     </div>
                 </div>
-                <span class="dashicons dashicons-shield-alt" style="font-size: 32px; width: 32px; height: 32px; color: <?php echo $total > 0 ? '#2271b1' : '#787c82'; ?>;"></span>
+                <img src="<?php echo esc_url( METZLER_WEBSHIELD_PLUGIN_URL . 'assets/images/logo-icon-128.png' ); ?>" alt="Metzler Webshield" style="width: 36px; height: 36px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); flex-shrink: 0;">
             </div>
 
             <?php if ( ! empty( $categories ) ) : ?>

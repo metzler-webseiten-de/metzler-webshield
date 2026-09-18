@@ -37,6 +37,9 @@ class Metzler_Webshield_Scanner_FIM {
             $total = count($files);
             $end = min($index + $batch_size, $total);
             
+            $whitelist = get_option( 'metzler_webshield_whitelist', array() );
+            if ( ! is_array( $whitelist ) ) $whitelist = array();
+
             // fetch all baseline hashes for this batch to save queries
             // Actually, querying them one by one is slow. We query them all at once.
             for ( $i = $index; $i < $end; $i++ ) {
@@ -47,10 +50,15 @@ class Metzler_Webshield_Scanner_FIM {
                 $normalized_content = wp_normalize_path(WP_CONTENT_DIR);
                 $relative_to_content = ltrim(str_ireplace($normalized_content, '', $normalized_file), '/');
                 $relative_path = 'wp-content/' . $relative_to_content;
+
+                if ( in_array( $relative_path, $whitelist, true ) ) {
+                    continue;
+                }
                 
                 $actual_hash = md5_file($file);
+                $path_hash   = md5($relative_path);
                 
-                $baseline_row = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM $table_name WHERE file_path = %s", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+                $baseline_row = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM $table_name WHERE path_hash = %s OR file_path = %s LIMIT 1", $path_hash, $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
                 
                 if ( ! $baseline_row ) {
                     // File is new!

@@ -9,15 +9,19 @@ class Metzler_Webshield_FIM {
 
         $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            file_path varchar(500) NOT NULL,
+            path_hash varchar(32) NOT NULL,
+            file_path text NOT NULL,
             file_hash varchar(32) NOT NULL,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
             PRIMARY KEY  (id),
-            UNIQUE KEY file_path (file_path(191))
+            UNIQUE KEY path_hash (path_hash)
         ) $charset_collate;";
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         dbDelta( $sql );
+
+        // Ensure old 191-character prefix index is removed to avoid duplicate key collisions on long paths
+        @$wpdb->query( "ALTER TABLE $table_name DROP INDEX file_path" ); // phpcs:ignore
     }
     
     public function init(): void {
@@ -49,8 +53,9 @@ class Metzler_Webshield_FIM {
             $relative_path = 'wp-content/' . $relative_to_content;
             
             $wpdb->insert($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-                'file_path' => $relative_path,
-                'file_hash' => md5_file($file),
+                'path_hash'  => md5($relative_path),
+                'file_path'  => $relative_path,
+                'file_hash'  => md5_file($file),
                 'updated_at' => current_time('mysql')
             ));
         }
@@ -73,8 +78,9 @@ class Metzler_Webshield_FIM {
         if ( file_exists($abs_path) ) {
             $hash = md5_file($abs_path);
             $wpdb->replace($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-                'file_path' => $relative_path,
-                'file_hash' => $hash,
+                'path_hash'  => md5($relative_path),
+                'file_path'  => $relative_path,
+                'file_hash'  => $hash,
                 'updated_at' => current_time('mysql')
             ));
             return true;

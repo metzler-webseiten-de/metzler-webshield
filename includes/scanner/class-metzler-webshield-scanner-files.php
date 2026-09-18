@@ -42,11 +42,13 @@ class Metzler_Webshield_Scanner_Files {
             $uploads_base = str_replace('\\', '/', $upload_dir['basedir']);
             
             $bad_extensions = array('php', 'phtml', 'php5', 'sh', 'exe', 'pl', 'cgi');
-            $bad_filenames = array('.htaccess', '.user.ini', 'php.ini', 'web.config');
+            $bad_filenames = array('.user.ini', 'php.ini', 'web.config');
               
               // Load WordPress Core Checksums to skip valid core files for massive performance boost
               $core_checksums = get_transient( 'metzler_webshield_core_checksums' );
               if ( !is_array($core_checksums) ) $core_checksums = array();
+              $whitelist = get_option( 'metzler_webshield_whitelist', array() );
+              if ( !is_array($whitelist) ) $whitelist = array();
             
             // Malware Signatures (Heuristics) - Obfuscated in code to prevent self-detection (False Positive on scanner itself)
             $malware_patterns = array(
@@ -64,7 +66,7 @@ class Metzler_Webshield_Scanner_Files {
                 'FilesM[a]n' => __('Web Shell signature (WSO/F-Man)', 'metzler-webshield'),
                 'b37[4]k' => __('Web Shell signature (b3-74k)', 'metzler-webshield'),
                 '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => __('Hidden variable-function injection', 'metzler-webshield'),
-                '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => 'Direkte POST-Payload Ausführung', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
+                '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => __('Direct POST payload execution', 'metzler-webshield'), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
                 'assert\s*\(\s*\\$_' => __('Assert injection (PHP <= 7.1)', 'metzler-webshield'),
                 'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => __('Compressed Base64 backdoor', 'metzler-webshield')
             );
@@ -79,6 +81,12 @@ class Metzler_Webshield_Scanner_Files {
                     
                     $full_path = $dir . DIRECTORY_SEPARATOR . $file;
                     if ( is_file($full_path) ) {
+                        $relative_path = ltrim(str_replace(ABSPATH, '', $full_path), '/\\');
+                        $relative_path = str_replace('\\', '/', $relative_path);
+                        if ( in_array($relative_path, $whitelist, true) ) {
+                            continue;
+                        }
+
                         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
                         $basename = strtolower(basename($file));
                         $normalized_path = str_replace('\\', '/', $full_path);
@@ -87,17 +95,18 @@ class Metzler_Webshield_Scanner_Files {
                         $threat_found = false;
                         $threat_reason = '';
                         
-                        // Rule 1: No executable file is allowed in Uploads (except empty index.php)
+                        // Rule 1: No executable code files allowed in Uploads
                         if ( $is_in_uploads ) {
-                            if ( in_array($ext, $bad_extensions) || in_array($basename, $bad_filenames) ) {
+                            if ( in_array($ext, $bad_extensions, true) || in_array($basename, $bad_filenames, true) ) {
+                                $is_safe_dummy = false;
                                 if ( $basename === 'index.php' ) {
                                     $content = trim(file_get_contents($full_path));
-                                    if ( $content === '<?php' || str_contains( $content, 'Silence is golden' ) || $content === '<?php // Silence is golden.' || $content === '' ) {
-                                        continue;
-                                    }
+                                    $is_safe_dummy = $this->is_strictly_dummy_index($content);
                                 }
-                                $threat_found = true;
-                                $threat_reason = __('Executable file in uploads directory.', 'metzler-webshield');
+                                if ( ! $is_safe_dummy ) {
+                                    $threat_found = true;
+                                    $threat_reason = __('Executable code file in uploads directory.', 'metzler-webshield');
+                                }
                             }
                         }
                         
@@ -185,4 +194,61 @@ class Metzler_Webshield_Scanner_Files {
         
         return $dirs;
     }
+
+    /**
+     * Verify that an index.php file contains strictly dummy silence comments, exit/die,
+     * or directory listing prevention headers (e.g., 404 Not Found),
+     * with ZERO executable statements, functions, variables, or payloads.
+     */
+    private function is_strictly_dummy_index( string $content ): bool {
+        // Standard silence and directory protection files are strictly under 500 bytes
+        if ( strlen( $content ) > 500 ) {
+            return false;
+        }
+
+        $tokens = token_get_all( $content );
+        $allowed_strings = array( 'defined', 'header', 'http_response_code', 'exit', 'die' );
+
+        foreach ( $tokens as $token ) {
+            if ( is_array( $token ) ) {
+                $type = $token[0];
+                $val  = $token[1];
+
+                // Allowed non-executable tokens: PHP open tag, comments, phpdoc, whitespace, close tag, exit/die
+                if ( in_array( $type, array( T_OPEN_TAG, T_CLOSE_TAG, T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_EXIT ), true ) ) {
+                    continue;
+                }
+                // Allowed safe protection functions / WP check
+                if ( $type === T_STRING && in_array( strtolower( $val ), $allowed_strings, true ) ) {
+                    continue;
+                }
+                // Allowed server variable (e.g. $_SERVER['SERVER_PROTOCOL'])
+                if ( $type === T_VARIABLE && $val === '$_SERVER' ) {
+                    continue;
+                }
+                // Allowed string literals & HTTP status codes (e.g. 'ABSPATH', ' 404 Not Found', 404)
+                if ( $type === T_CONSTANT_ENCAPSED_STRING || $type === T_LNUMBER ) {
+                    continue;
+                }
+                // Allowed boolean logic (e.g. defined('ABSPATH') || exit;)
+                if ( in_array( $type, array( T_BOOLEAN_OR, T_BOOLEAN_AND ), true ) ) {
+                    continue;
+                }
+
+                // Any other PHP token (malicious functions, user variables, eval, backticks, assignments) -> alert!
+                return false;
+            } else {
+                // Allowed punctuation associated with exit, header(), defined(), array access, string concatenation
+                if ( in_array( $token, array( ';', '(', ')', '!', '[', ']', '.', ',' ), true ) ) {
+                    continue;
+                }
+
+                // Any other character (e.g. assignment '=', execution backtick '`') means executable content!
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
+

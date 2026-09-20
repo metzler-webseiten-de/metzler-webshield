@@ -25,7 +25,22 @@ class Metzler_Webshield_WAF {
         $is_loopback = !empty($client_ip) && ($client_ip === $server_ip || $client_ip === $host_ip || $client_ip === '127.0.0.1' || $client_ip === '::1');
         
         $script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $is_cron = (basename($script_name) === 'wp-cron.php');
+        
+        // XML-RPC Inspection & Abuse Protection
+        $is_xmlrpc = (basename($script_name) === 'xmlrpc.php' || stripos($script_name, 'xmlrpc.php') !== false || stripos($uri, 'xmlrpc.php') !== false);
+        if ( $is_xmlrpc ) {
+            if ( get_option('metzler_webshield_disable_xmlrpc', '0') === '1' ) {
+                $this->block_request( 'XML_RPC_Abuse', 'Blocked XML-RPC request (disabled by administrator)' );
+            }
+            
+            // Detect malicious multicall brute-force or pingback DDoS even if XML-RPC is enabled
+            $raw_input = file_get_contents('php://input');
+            if ( ! empty($raw_input) && (stripos($raw_input, 'system.multicall') !== false || stripos($raw_input, 'pingback.ping') !== false) ) {
+                $this->block_request( 'XML_RPC_Abuse', 'Blocked malicious XML-RPC payload: ' . substr($raw_input, 0, 200) );
+            }
+        }
         
         // Only skip browser integrity checks for automated background tasks, 
         // but KEEP the actual malware payload inspection active for them!

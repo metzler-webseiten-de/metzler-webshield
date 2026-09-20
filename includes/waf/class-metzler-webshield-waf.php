@@ -178,7 +178,7 @@ class Metzler_Webshield_WAF {
     
     #[NoReturn]
     private function block_request( $category, $payload = '' ): void {
-        $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? '')) ?? '127.0.0.1'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $ip = class_exists( 'Metzler_Webshield' ) ? Metzler_Webshield::get_client_ip() : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: '127.0.0.1' );
         
         // WAF blocks are logged asynchronously via telemetry.jsonl to prevent MySQL crashing during DDoS.
         

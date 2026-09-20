@@ -81,6 +81,9 @@ class Metzler_Webshield {
         // WAF Rules Sync (Hourly)
         add_action( 'metzler_webshield_sync_waf_rules', array( $this, 'cron_sync_waf_rules' ) );
 
+        // Author / User Enumeration Rate Limiter (Cloudflare- & Proxy-Aware)
+        add_action( 'init', array( $this, 'check_author_enumeration' ) );
+
         // Ensure background crons remain scheduled
         if ( is_admin() ) {
             add_action( 'admin_init', array( 'Metzler_Webshield', 'ensure_scheduled_crons' ) );
@@ -381,6 +384,86 @@ class Metzler_Webshield {
             file_put_contents($upload_dir . '/waf-rules.enc', $body, LOCK_EX); // phpcs:ignore
             
             Metzler_Webshield_Logger::log(__("WAF rules successfully synchronized from Threat Intelligence Cloud.", "metzler-webshield"), "system", "success");
+        }
+    }
+
+    public static function get_client_ip(): string {
+        $ip_keys = array(
+            'HTTP_CF_CONNECTING_IP', // Cloudflare
+            'HTTP_X_FORWARDED_FOR',  // Standard proxies / load balancers
+            'HTTP_X_REAL_IP',        // Nginx / Caddy / Traefik
+            'REMOTE_ADDR'            // Direct connection fallback
+        );
+
+        foreach ( $ip_keys as $key ) {
+            if ( ! empty( $_SERVER[$key] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+                $raw_ip = wp_unslash( $_SERVER[$key] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+                if ( str_contains( $raw_ip, ',' ) ) {
+                    $ips = explode( ',', $raw_ip );
+                    $raw_ip = trim( $ips[0] );
+                }
+                $sanitized_ip = sanitize_text_field( trim( $raw_ip ) );
+                if ( filter_var( $sanitized_ip, FILTER_VALIDATE_IP ) ) {
+                    return $sanitized_ip;
+                }
+            }
+        }
+
+        return '127.0.0.1';
+    }
+
+    public function check_author_enumeration(): void {
+        if ( is_admin() || is_user_logged_in() ) {
+            return;
+        }
+
+        if ( isset($_GET['author']) && is_numeric($_GET['author']) ) {
+            $ip = self::get_client_ip();
+            $transient_key = 'mws_ae_' . md5($ip);
+            $count = (int) get_transient($transient_key);
+            $count++;
+            set_transient($transient_key, $count, 60);
+
+            // Rate limit: Allow up to 3 requests per minute for legitimate tests, block automated scans (> 3)
+            if ( $count > 3 ) {
+                $upload_base = wp_upload_dir();
+                $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
+                if ( ! is_dir($upload_dir) ) {
+                    wp_mkdir_p($upload_dir);
+                }
+
+                $telemetry_data = array(
+                    'time'           => gmdate('c'),
+                    'domain'         => wp_parse_url(home_url(), PHP_URL_HOST),
+                    'ip_address'     => $ip,
+                    'attack_type'    => 'User_Enumeration',
+                    'severity'       => 'medium',
+                    'request_uri'    => isset($_SERVER['REQUEST_URI']) ? base64_encode(wp_unslash($_SERVER['REQUEST_URI'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+                    'user_agent'     => isset($_SERVER['HTTP_USER_AGENT']) ? base64_encode(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+                    'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+                    'payload'        => base64_encode("Author enumeration rate limit exceeded: {$count} probes in 60s"),
+                    'encoding'       => 'base64'
+                );
+                @file_put_contents($upload_dir . '/telemetry.jsonl', json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
+
+                require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
+                Metzler_Webshield_Logger::log(
+                    sprintf(
+                        /* translators: 1: IP address, 2: Probe count */
+                        __('User Enumeration blocked: %1$s exceeded rate limit with %2$d author probes in 60s', 'metzler-webshield'),
+                        $ip,
+                        $count
+                    ),
+                    'waf',
+                    'warning'
+                );
+
+                wp_die(
+                    '<h1>' . esc_html__('Access Denied', 'metzler-webshield') . '</h1><p>' . esc_html__('Suspicious user enumeration activity detected.', 'metzler-webshield') . '</p>',
+                    esc_html__('Access Denied', 'metzler-webshield'),
+                    array('response' => 403)
+                );
+            }
         }
     }
 

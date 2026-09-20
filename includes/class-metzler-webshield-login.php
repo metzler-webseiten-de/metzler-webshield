@@ -81,7 +81,7 @@ class Metzler_Webshield_Login {
 
         if ( ! isset( $_POST['metzler_webshield_bot_token'] ) || ! wp_verify_nonce( sanitize_text_field(wp_unslash($_POST['metzler_webshield_bot_token'])), "metzler_webshield_login_check" ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
             
-            $ip = $_SERVER["REMOTE_ADDR"] ?? "Unknown"; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $ip = class_exists( 'Metzler_Webshield' ) ? Metzler_Webshield::get_client_ip() : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: 'Unknown' );
             require_once METZLER_WEBSHIELD_PLUGIN_DIR . "includes/log/class-metzler-webshield-logger.php";
             Metzler_Webshield_Logger::log(
                 sprintf(

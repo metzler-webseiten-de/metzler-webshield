@@ -26,6 +26,8 @@ $options = array( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     "metzler_webshield_enable_waf", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     "metzler_webshield_enable_fim", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     "metzler_webshield_disable_xmlrpc", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    "metzler_webshield_enable_rate_limiting", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    "metzler_webshield_under_attack_mode", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     "metzler_webshield_enable_telemetry" // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals

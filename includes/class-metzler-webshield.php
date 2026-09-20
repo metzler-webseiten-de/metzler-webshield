@@ -19,11 +19,17 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-config.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-rate-limiter.php';
         
         // Execute WAF immediately on plugin load
         if ( get_option('metzler_webshield_enable_waf', false) !== false ) {
             $waf = new Metzler_Webshield_WAF();
             $waf->run();
+        }
+
+        // Execute General Rate Limiter & Under Attack Mode Shield
+        if ( get_option('metzler_webshield_enable_rate_limiting', '1') === '1' || get_option('metzler_webshield_under_attack_mode', '0') === '1' ) {
+            Metzler_Webshield_Rate_Limiter::check_request();
         }
         
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-login.php';

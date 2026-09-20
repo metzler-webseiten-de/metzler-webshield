@@ -608,6 +608,8 @@ jQuery(document).ready(function($) {
         const pluginsEnabled = $('#metzler-webshield-setting-plugins').is(':checked') ? '1' : '0';
         const wafEnabled = $('#metzler-webshield-setting-waf').is(':checked') ? '1' : '0';
         const xmlrpcDisabled = $('#metzler-webshield-setting-xmlrpc').is(':checked') ? '1' : '0';
+        const ratelimitEnabled = $('#metzler-webshield-setting-ratelimit').is(':checked') ? '1' : '0';
+        const underAttackEnabled = $('#metzler-webshield-setting-under-attack').is(':checked') ? '1' : '0';
         const telemetryEnabled = $('#metzler-webshield-setting-telemetry').is(':checked') ? '1' : '0';
         btn.prop('disabled', true);
         
@@ -621,6 +623,8 @@ jQuery(document).ready(function($) {
             enable_plugins: pluginsEnabled,
             enable_waf: wafEnabled,
             disable_xmlrpc: xmlrpcDisabled,
+            enable_ratelimit: ratelimitEnabled,
+            under_attack_mode: underAttackEnabled,
             enable_telemetry: telemetryEnabled
         }, function(res) {
             btn.prop('disabled', false);

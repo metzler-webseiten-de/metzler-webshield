@@ -563,6 +563,32 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                         </td>
                     </tr>
                     <tr>
+                        <th scope="row"><?php echo esc_html__("Rate Limiting & DoS Shield", "metzler-webshield"); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="metzler-webshield-setting-ratelimit" <?php echo get_option('metzler_webshield_enable_rate_limiting', '1') === '1' ? 'checked' : ''; ?>>
+                                <strong><?php echo esc_html__("Enable general rate limiting (Recommended)", "metzler-webshield"); ?></strong>
+                            </label>
+                            <p class="description"><?php echo esc_html__("Protects your server against aggressive scrapers, automated floods, and bots by limiting excessive request bursts per IP. Verified search engines (Google, Bing), static assets, and logged-in administrators are automatically exempt.", "metzler-webshield"); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__("Under Attack Mode", "metzler-webshield"); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="metzler-webshield-setting-under-attack" <?php echo get_option('metzler_webshield_under_attack_mode', '0') === '1' ? 'checked' : ''; ?>>
+                                <strong style="color: #d63638;"><?php echo esc_html__("Enable 'Under Attack' Mode (Emergency DDoS Shield)", "metzler-webshield"); ?></strong>
+                            </label>
+                            <?php 
+                                $under_attack_active = get_option('metzler_webshield_under_attack_mode', '0') === '1'; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+                            ?>
+                            <p class="metzler-webshield-stat-highlight <?php echo $under_attack_active ? 'waf-active' : 'waf-inactive'; ?>" style="<?php echo $under_attack_active ? 'background: #fcf0f1; border-color: #d63638; color: #d63638;' : ''; ?>">
+                                <?php echo esc_html__("Status:", "metzler-webshield") . " " . ($under_attack_active ? esc_html__('Active (All new visitors must pass security check)', 'metzler-webshield') : esc_html__('Inactive (Normal operation)', 'metzler-webshield')); ?>
+                            </p>
+                            <p class="description"><?php echo esc_html__("Activate during heavy active DDoS attacks or bot floods. Every new anonymous visitor must pass a 1-click human verification before reaching WordPress, completely shielding your database. Verified search engines (Googlebot, Bingbot) and logged-in administrators are automatically exempt.", "metzler-webshield"); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><?php echo esc_html__("Telemetry & Threat Intelligence", "metzler-webshield"); ?></th>
                         <td>
                             <label>

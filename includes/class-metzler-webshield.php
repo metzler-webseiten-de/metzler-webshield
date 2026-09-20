@@ -161,7 +161,7 @@ class Metzler_Webshield {
             if (!$ip) continue;
 
             $telemetry_data = array(
-                'time' => $row->time,
+                'time' => function_exists('get_gmt_from_date') ? get_gmt_from_date($row->time, 'c') : gmdate('c', strtotime($row->time)),
                 'domain' => $domain,
                 'ip_address' => sanitize_text_field($ip),
                 'attack_type' => sanitize_text_field($attack_type),

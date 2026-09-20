@@ -107,7 +107,7 @@ class Metzler_Webshield_Login {
                 @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
             }
             $telemetry_data = array(
-                'time' => current_time('mysql'),
+                'time' => gmdate('c'),
                 'domain' => wp_parse_url(home_url(), PHP_URL_HOST),
                 'ip_address' => sanitize_text_field($ip),
                 'attack_type' => 'Brute_Force',

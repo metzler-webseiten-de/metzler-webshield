@@ -188,6 +188,7 @@ class Metzler_Webshield_WAF {
         }
 
         $telemetry_data = array(
+            'time'           => gmdate('c'),
             'domain'         => $domain,
             'ip_address'     => $ip,
             'user_agent'     => base64_encode($user_agent), // base64 encoded for safe storage/transport

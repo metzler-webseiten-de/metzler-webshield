@@ -53,6 +53,8 @@ class Metzler_Webshield_Admin {
         wp_enqueue_style( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/css/admin.css', array(), METZLER_WEBSHIELD_VERSION );
         wp_enqueue_script( 'metzler-webshield-chartjs', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/chart.min.js', array(), METZLER_WEBSHIELD_VERSION, true );
         wp_enqueue_script( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery', 'metzler-webshield-chartjs' ), METZLER_WEBSHIELD_VERSION, true );
+        // Hero texts must match the server-rendered ones in view-dashboard.php, otherwise JS overwrites the tier info
+        $is_pro = get_option( 'metzler_webshield_is_licensed', false ) && ( 'pro' === get_option( 'metzler_webshield_license_tier', 'free' ) );
         wp_localize_script( 'metzler-webshield-admin', 'metzler_webshield_ajax', array(
             'ajax_url'    => admin_url( 'admin-ajax.php' ),
             'nonce'       => wp_create_nonce( 'metzler_webshield_nonce' ),
@@ -92,9 +94,9 @@ class Metzler_Webshield_Admin {
                 'request_error'      => __('Error during request.', 'metzler-webshield'),
                 'invalid_key'        => __('Invalid key.', 'metzler-webshield'),
                 // New UI states
-                'hero_secure'        => __('Your website is secure.', 'metzler-webshield'),
+                'hero_secure'        => $is_pro ? __('Your website is fully secured with Pro.', 'metzler-webshield') : __('Your website is secure (Community Tier).', 'metzler-webshield'),
                 'hero_local_secure'  => __('Basic protection active.', 'metzler-webshield'),
-                'hero_guards_active' => __('All background guards are active and up to date.', 'metzler-webshield'),
+                'hero_guards_active' => $is_pro ? __('All background guards and Pro cloud firewall rules are active.', 'metzler-webshield') : __('Community Free protection active. Upgrade to Pro for advanced cloud firewall rules and central management.', 'metzler-webshield'),
                 'hero_local_desc'    => __('Activate a free license to unlock Smart Scan & Cloud Features.', 'metzler-webshield'),
                 'hero_risks'         => __('Security risks detected!', 'metzler-webshield'),
                 'hero_risks_scan'    => __('Smart Scan is still running, but issues have already been detected.', 'metzler-webshield'),
@@ -200,13 +202,7 @@ class Metzler_Webshield_Admin {
             $telemetry_opt_in = sanitize_text_field(wp_unslash($_POST['telemetry'] ?? '0')) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.NonceVerification
             update_option( 'metzler_webshield_enable_telemetry', $telemetry_opt_in );
             // Save token to file for high-speed WAF access without DB overhead
-            $upload_base = wp_upload_dir();
-            $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
-            if ( ! is_dir($upload_dir) ) {
-                @mkdir($upload_dir, 0755, true); // phpcs:ignore
-                @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
-            }
-            @file_put_contents($upload_dir . '/waf.key', $token, LOCK_EX); // phpcs:ignore
+            Metzler_Webshield_Storage::save_waf_key( $token );
 
             wp_send_json_success( array(
                 'tier'    => $tier,
@@ -270,7 +266,7 @@ class Metzler_Webshield_Admin {
         delete_option( 'metzler_webshield_pro_expired' );
         
         $upload_base = wp_upload_dir();
-        @unlink($upload_base['basedir'] . '/metzler-webshield/waf.key'); // phpcs:ignore
+        Metzler_Webshield_Storage::delete_waf_key();
         @unlink($upload_base['basedir'] . '/metzler-webshield/waf-rules.enc'); // phpcs:ignore
 
         wp_send_json_success( array( 'message' => __( 'License removed.', 'metzler-webshield' ) ) );
@@ -386,9 +382,7 @@ class Metzler_Webshield_Admin {
      */
     public function render_bots_widget(): void {
         // Auto-flush pending telemetry buffer so counts are up-to-date
-        $upload_base = wp_upload_dir();
-        $telemetry_file = $upload_base['basedir'] . '/metzler-webshield/telemetry.jsonl';
-        if ( file_exists( $telemetry_file ) && filesize( $telemetry_file ) > 0 ) {
+        if ( Metzler_Webshield_Storage::has_pending_telemetry() ) {
             if ( class_exists( 'Metzler_Webshield' ) ) {
                 $shield = new Metzler_Webshield();
                 $shield->cron_sync_telemetry();

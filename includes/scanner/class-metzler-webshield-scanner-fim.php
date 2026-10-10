@@ -103,7 +103,7 @@ class Metzler_Webshield_Scanner_FIM {
             );
             
             foreach ( $iterator as $path ) {
-                if ( $path->isFile() && strtolower($path->getExtension()) === 'php' ) {
+                if ( $path->isFile() && strtolower($path->getExtension()) === 'php' && ! Metzler_Webshield_Storage::is_own_file($path->getPathname()) ) {
                     $files[] = $path->getPathname();
                 }
             }

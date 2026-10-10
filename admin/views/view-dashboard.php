@@ -8,8 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     $last_scan_text = $last_scan ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime($last_scan) ) : esc_html__('Never', 'metzler-webshield'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     
     // Auto-flush telemetry buffer so SSR renders the newest logs immediately
-    $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-    if ( file_exists($upload_dir . '/telemetry.jsonl') && filesize($upload_dir . '/telemetry.jsonl') > 0 ) {
+    if ( Metzler_Webshield_Storage::has_pending_telemetry() ) {
         $metzler_webshield = new Metzler_Webshield();
         $metzler_webshield->cron_sync_telemetry();
     }

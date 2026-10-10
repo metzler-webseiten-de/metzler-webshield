@@ -6,6 +6,7 @@ class Metzler_Webshield {
     }
     
     private function load_dependencies(): void {
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-storage.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-queue.php';
         
@@ -142,12 +143,6 @@ class Metzler_Webshield {
         $results = $wpdb->get_results("SELECT * FROM $table_name WHERE type = 'waf'");
         if (empty($results)) return;
 
-        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-        if (!file_exists($upload_dir)) {
-            wp_mkdir_p($upload_dir);
-        }
-        $telemetry_file = $upload_dir . '/telemetry.jsonl';
-
         $domain = wp_parse_url(home_url(), PHP_URL_HOST);
         
         foreach ($results as $row) {
@@ -180,12 +175,14 @@ class Metzler_Webshield {
                 'encoding' => 'base64'
             );
             
-            @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
+            Metzler_Webshield_Storage::append_telemetry($telemetry_data);
         }
     }
 
 
     public function cron_sync_telemetry(): void {
+        self::protect_upload_dir();
+
         if ( get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
             // Only sync history if they actually have a valid license, so Free users don't burn their one-time sync!
             if ( get_option('metzler_webshield_is_licensed') && get_option('metzler_webshield_historical_telemetry_sent', '0') !== '1' ) {
@@ -193,11 +190,10 @@ class Metzler_Webshield {
                 update_option('metzler_webshield_historical_telemetry_sent', '1');
             }
         }
-        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-        $telemetry_file = $upload_dir . '/telemetry.jsonl';
-        $processing_file = $upload_dir . '/telemetry_processing.jsonl';
+        $telemetry_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::TELEMETRY_FILE);
+        $processing_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::PROCESSING_FILE);
 
-        if ( ! file_exists($telemetry_file) || filesize($telemetry_file) === 0 ) {
+        if ( ! Metzler_Webshield_Storage::has_pending_telemetry() ) {
             return;
         }
 
@@ -206,7 +202,7 @@ class Metzler_Webshield {
             return;
         }
 
-        $lines = file($processing_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $lines = Metzler_Webshield_Storage::read_lines($processing_file);
         if ( empty($lines) ) {
             @unlink($processing_file); // phpcs:ignore
             return;
@@ -298,21 +294,9 @@ class Metzler_Webshield {
     }
 
     public static function protect_upload_dir(): void {
-        $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-        if ( ! is_dir($upload_dir) ) {
-            @mkdir($upload_dir, 0755, true); // phpcs:ignore
-        }
-
-        $htaccess = $upload_dir . '/.htaccess';
-        if ( ! file_exists($htaccess) ) {
-            $content = "# Deny direct web access to security data\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order Deny,Allow\n    Deny from all\n</IfModule>\n";
-            @file_put_contents($htaccess, $content); // phpcs:ignore
-        }
-
-        $index = $upload_dir . '/index.php';
-        if ( ! file_exists($index) ) {
-            @file_put_contents($index, "<?php // Silence is golden."); // phpcs:ignore
-        }
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-storage.php';
+        Metzler_Webshield_Storage::ensure_dir();
+        Metzler_Webshield_Storage::migrate_legacy_files();
     }
 
     public static function ensure_scheduled_crons(): void {
@@ -380,13 +364,9 @@ class Metzler_Webshield {
         $data = json_decode($body, true);
 
         if ( isset($data['success']) && $data['success'] && isset($data['payload']) && isset($data['iv']) ) {
-            $upload_dir = WP_CONTENT_DIR . '/uploads/metzler-webshield';
-            if ( ! is_dir($upload_dir) ) {
-                @mkdir($upload_dir, 0755, true); // phpcs:ignore
-                @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
-            }
+            $upload_dir = Metzler_Webshield_Storage::ensure_dir();
             
-            // We save the RAW encrypted JSON. The WAF will decrypt it on the fly using waf.key
+            // We save the RAW encrypted JSON. The WAF will decrypt it on the fly using the stored WAF key
             file_put_contents($upload_dir . '/waf-rules.enc', $body, LOCK_EX); // phpcs:ignore
             
             Metzler_Webshield_Logger::log(__("WAF rules successfully synchronized from Threat Intelligence Cloud.", "metzler-webshield"), "system", "success");
@@ -432,12 +412,6 @@ class Metzler_Webshield {
 
             // Rate limit: Allow up to 3 requests per minute for legitimate tests, block automated scans (> 3)
             if ( $count > 3 ) {
-                $upload_base = wp_upload_dir();
-                $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
-                if ( ! is_dir($upload_dir) ) {
-                    wp_mkdir_p($upload_dir);
-                }
-
                 $telemetry_data = array(
                     'time'           => gmdate('c'),
                     'domain'         => wp_parse_url(home_url(), PHP_URL_HOST),
@@ -450,7 +424,7 @@ class Metzler_Webshield {
                     'payload'        => base64_encode("Author enumeration rate limit exceeded: {$count} probes in 60s"),
                     'encoding'       => 'base64'
                 );
-                @file_put_contents($upload_dir . '/telemetry.jsonl', json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
+                Metzler_Webshield_Storage::append_telemetry($telemetry_data);
 
                 require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
                 Metzler_Webshield_Logger::log(

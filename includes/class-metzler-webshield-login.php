@@ -95,17 +95,6 @@ class Metzler_Webshield_Login {
             );
 
             // Write brute force to telemetry file
-            $upload_base = wp_upload_dir();
-            $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
-            if ( ! file_exists($upload_dir) ) {
-                wp_mkdir_p($upload_dir);
-            }
-            if ( ! file_exists($upload_dir . '/.htaccess') ) {
-                @file_put_contents($upload_dir . '/.htaccess', "# Deny direct web access to security data\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order Deny,Allow\n    Deny from all\n</IfModule>\n"); // phpcs:ignore
-            }
-            if ( ! file_exists($upload_dir . '/index.php') ) {
-                @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
-            }
             $telemetry_data = array(
                 'time' => gmdate('c'),
                 'domain' => wp_parse_url(home_url(), PHP_URL_HOST),
@@ -118,7 +107,7 @@ class Metzler_Webshield_Login {
                 'payload' => base64_encode('Username: ' . sanitize_text_field($username)),
                 'encoding' => 'base64'
             );
-            @file_put_contents($upload_dir . '/telemetry.jsonl', json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX);
+            Metzler_Webshield_Storage::append_telemetry($telemetry_data);
             
             return new WP_Error(
                 "metzler_webshield_bot_blocked",

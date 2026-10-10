@@ -6,6 +6,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     die;
 }
 
+// Loaded standalone by the legacy mu-plugin bootstrapper (beta versions), so pull in storage ourselves.
+require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
+
 class Metzler_Webshield_WAF {
     
     private array $rules = array();
@@ -96,10 +99,9 @@ class Metzler_Webshield_WAF {
     private function load_rules(): void {
         $upload_base = wp_upload_dir();
         $enc_file = $upload_base['basedir'] . '/metzler-webshield/waf-rules.enc';
-        $key_file = $upload_base['basedir'] . '/metzler-webshield/waf.key';
         
-        if ( file_exists($enc_file) && file_exists($key_file) ) {
-            $token = file_get_contents($key_file);
+        if ( file_exists($enc_file) ) {
+            $token = Metzler_Webshield_Storage::get_waf_key();
             $json = file_get_contents($enc_file);
             if ( $token && $json ) {
                 $data = json_decode($json, true);
@@ -180,7 +182,7 @@ class Metzler_Webshield_WAF {
     private function block_request( $category, $payload = '' ): void {
         $ip = class_exists( 'Metzler_Webshield' ) ? Metzler_Webshield::get_client_ip() : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: '127.0.0.1' );
         
-        // WAF blocks are logged asynchronously via telemetry.jsonl to prevent MySQL crashing during DDoS.
+        // WAF blocks are logged asynchronously via the telemetry buffer file to prevent MySQL crashing during DDoS.
         
         // Push 100% of Telemetry to local Batch File (Extremely Fast, NO API/DB overhead)
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
@@ -215,19 +217,7 @@ class Metzler_Webshield_WAF {
             'encoding'       => 'base64'
         );
 
-        $upload_base = wp_upload_dir();
-        $upload_dir = $upload_base['basedir'] . '/metzler-webshield';
-        if ( ! is_dir($upload_dir) ) {
-            @mkdir($upload_dir, 0755, true); // phpcs:ignore
-        }
-        if ( ! file_exists($upload_dir . '/.htaccess') ) {
-            @file_put_contents($upload_dir . '/.htaccess', "# Deny direct web access to security data\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order Deny,Allow\n    Deny from all\n</IfModule>\n"); // phpcs:ignore
-        }
-        if ( ! file_exists($upload_dir . '/index.php') ) {
-            @file_put_contents($upload_dir . '/index.php', "<?php // Silence is golden."); // phpcs:ignore
-        }
-        $telemetry_file = $upload_dir . '/telemetry.jsonl';
-        @file_put_contents($telemetry_file, json_encode($telemetry_data) . "\n", FILE_APPEND | LOCK_EX); // phpcs:ignore
+        Metzler_Webshield_Storage::append_telemetry($telemetry_data);
         
         $title = __('Access Blocked', 'metzler-webshield');
         $message = '<h1>' . esc_html__('Access Blocked', 'metzler-webshield') . '</h1>';

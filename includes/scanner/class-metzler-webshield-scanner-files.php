@@ -83,7 +83,7 @@ class Metzler_Webshield_Scanner_Files {
                     if ( is_file($full_path) ) {
                         $relative_path = ltrim(str_replace(ABSPATH, '', $full_path), '/\\');
                         $relative_path = str_replace('\\', '/', $relative_path);
-                        if ( in_array($relative_path, $whitelist, true) ) {
+                        if ( in_array($relative_path, $whitelist, true) || Metzler_Webshield_Storage::is_own_file($full_path) ) {
                             continue;
                         }
 

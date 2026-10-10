@@ -12,6 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Loaded standalone by the legacy mu-plugin bootstrapper (beta versions), so pull in storage ourselves.
+require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
+
 class Metzler_Webshield_Rate_Limiter {
 
     /**
@@ -177,31 +180,12 @@ class Metzler_Webshield_Rate_Limiter {
     }
 
     /**
-     * Resolves the secure storage directory on disk without relying on pluggable or late WP functions.
-     */
-    private static function get_storage_dir(): string {
-        if ( defined( 'WP_CONTENT_DIR' ) ) {
-            return WP_CONTENT_DIR . '/uploads/metzler-webshield';
-        }
-        if ( function_exists( 'wp_upload_dir' ) ) {
-            $up = wp_upload_dir();
-            return ( $up['basedir'] ?? '' ) . '/metzler-webshield';
-        }
-        return sys_get_temp_dir() . '/metzler-webshield';
-    }
-
-    /**
      * File-based sliding window rate tracker.
      */
     private static function record_and_evaluate( string $ip, string $uri, string $user_agent ): void {
-        $upload_dir = self::get_storage_dir();
-        $rl_dir     = $upload_dir . '/rl';
-        if ( ! is_dir( $rl_dir ) ) {
-            @mkdir( $rl_dir, 0755, true );
-            @file_put_contents( $rl_dir . '/index.php', "<?php // Silence is golden." ); // phpcs:ignore
-        }
+        $rl_dir = Metzler_Webshield_Storage::ensure_dir( 'rl' );
 
-        $file = $rl_dir . '/' . md5( $ip ) . '.json';
+        $file = $rl_dir . '/' . md5( $ip ) . '.php';
         $now  = time();
 
         $data = array(
@@ -211,7 +195,7 @@ class Metzler_Webshield_Rate_Limiter {
         );
 
         if ( file_exists( $file ) ) {
-            $content = @file_get_contents( $file );
+            $content = Metzler_Webshield_Storage::read_guarded( $file );
             if ( ! empty( $content ) ) {
                 $decoded = json_decode( $content, true );
                 if ( is_array( $decoded ) ) {
@@ -245,14 +229,14 @@ class Metzler_Webshield_Rate_Limiter {
         // 4. Evaluate breach
         if ( $data['burst']['count'] > self::BURST_LIMIT || $data['sustained']['count'] > self::SUSTAINED_LIMIT ) {
             $data['blocked_until'] = $now + self::COOLDOWN_SECONDS;
-            @file_put_contents( $file, json_encode( $data ), LOCK_EX );
+            Metzler_Webshield_Storage::write_guarded( $file, json_encode( $data ) );
 
             self::log_rate_limit_event( $ip, $uri, $user_agent, $data['burst']['count'], $data['sustained']['count'] );
             self::render_challenge_page( $ip, self::COOLDOWN_SECONDS );
         }
 
         // Save active counters
-        @file_put_contents( $file, json_encode( $data ), LOCK_EX );
+        Metzler_Webshield_Storage::write_guarded( $file, json_encode( $data ) );
 
         // 5. Periodic garbage collection (1 in 500 requests)
         if ( 1 === mt_rand( 1, 500 ) ) {
@@ -264,8 +248,7 @@ class Metzler_Webshield_Rate_Limiter {
      * Log telemetry and security log for rate limit violations.
      */
     private static function log_rate_limit_event( string $ip, string $uri, string $user_agent, int $burst_count, int $sustained_count ): void {
-        $upload_dir = self::get_storage_dir();
-        $domain     = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? 'unknown' ) );
+        $domain = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? 'unknown' ) );
 
         $telemetry_data = array(
             'time'           => gmdate( 'c' ),
@@ -279,7 +262,7 @@ class Metzler_Webshield_Rate_Limiter {
             'payload'        => base64_encode( "Rate limit exceeded: {$burst_count} req/15s, {$sustained_count} req/60s" ),
             'encoding'       => 'base64',
         );
-        @file_put_contents( $upload_dir . '/telemetry.jsonl', json_encode( $telemetry_data ) . "\n", FILE_APPEND | LOCK_EX );
+        Metzler_Webshield_Storage::append_telemetry( $telemetry_data );
 
         if ( defined( 'METZLER_WEBSHIELD_PLUGIN_DIR' ) ) {
             require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
@@ -670,8 +653,7 @@ class Metzler_Webshield_Rate_Limiter {
      * Resets rate limit file for an IP upon successful human verification.
      */
     private static function clear_ip_bucket( string $ip ): void {
-        $upload_dir = self::get_storage_dir();
-        $file       = $upload_dir . '/rl/' . md5( $ip ) . '.json';
+        $file = Metzler_Webshield_Storage::path( 'rl/' . md5( $ip ) . '.php' );
         if ( file_exists( $file ) ) {
             @unlink( $file );
         }
@@ -681,7 +663,7 @@ class Metzler_Webshield_Rate_Limiter {
      * Deletes rate-limit files older than 1 hour.
      */
     private static function clean_stale_buckets( string $rl_dir ): void {
-        $files = glob( $rl_dir . '/*.json' );
+        $files = glob( $rl_dir . '/*.php' );
         if ( empty( $files ) ) {
             return;
         }

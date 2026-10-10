@@ -48,10 +48,15 @@ $upload_base = wp_upload_dir(); // phpcs:ignore WordPress.NamingConventions.Pref
 $upload_dir = $upload_base['basedir'] . "/metzler-webshield"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
 if ( is_dir( $upload_dir ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $files = glob( $upload_dir . "/*" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    foreach ( $files as $file ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-        if ( is_file( $file ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-            @wp_delete_file( $file ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $iterator = new RecursiveIteratorIterator( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+        new RecursiveDirectoryIterator( $upload_dir, FilesystemIterator::SKIP_DOTS ),
+        RecursiveIteratorIterator::CHILD_FIRST
+    ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    foreach ( $iterator as $path ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+        if ( $path->isDir() ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+            @rmdir( $path->getPathname() ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+        } else { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+            @wp_delete_file( $path->getPathname() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
         } // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     } // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     @rmdir( $upload_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir

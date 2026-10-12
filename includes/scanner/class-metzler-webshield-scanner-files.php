@@ -56,7 +56,7 @@ class Metzler_Webshield_Scanner_Files {
                 '\\$[a-zA-Z-�][a-zA-Z0-9_-�]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
                 'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)' => __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield'),
                 '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))' => __('Dangerous system commands with user input', 'metzler-webshield'),
-                'file_put_contents\s*\(\s*.*?\s*,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'),
+                'file_put_contents\s*\([^;]*?,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'), // [^;] keeps the match inside one statement
                 'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode' => __('Gzuncompress/Base64 obfuscation', 'metzler-webshield'),
                 'preg_replace\s*\(\s*["\'\']\/(.*?)\/e["\'\']' => __('preg_replace /e code execution', 'metzler-webshield'),
                 'assert\s*\(\s*base64_decode' => __('Assert Base64 code execution', 'metzler-webshield'),

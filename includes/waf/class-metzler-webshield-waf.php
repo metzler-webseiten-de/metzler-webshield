@@ -6,10 +6,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Loaded standalone by the legacy mu-plugin bootstrapper (beta versions), so pull in storage ourselves.
 require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
+require_once dirname( __DIR__ ) . '/class-metzler-webshield-request.php';
 require_once __DIR__ . '/class-metzler-webshield-cloud-rules.php';
 
 class Metzler_Webshield_WAF {
-    
+
+    /**
+     * Categories that only make sense for one part of the request. Bot signatures describe the client,
+     * so a blog search for "curl" is no attack; reconnaissance rules describe probed file paths.
+     */
+    const SCOPED_CATEGORIES = array(
+        'Bad_Bots'       => 'user_agent',
+        'Reconnaissance' => 'path',
+    );
+
+    /** Larger JSON bodies are not inspected (uploads, imports) */
+    const MAX_JSON_BODY = 1048576;
+
+    /** Attackers stack URL encodings (%252e -> %2e -> .) to slip past a single decode */
+    const MAX_DECODE_PASSES = 3;
+
     private array $rules = array();
     
     public function __construct() {
@@ -21,10 +37,7 @@ class Metzler_Webshield_WAF {
         if ( defined('WP_CLI') && WP_CLI ) return;
         if ( defined('DOING_CRON') && DOING_CRON ) return;
         
-        $client_ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-        $server_ip = $_SERVER['SERVER_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-        $host_ip = isset($_SERVER['HTTP_HOST']) ? gethostbyname(sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST']))) : '';
-        $is_loopback = !empty($client_ip) && ($client_ip === $server_ip || $client_ip === $host_ip || $client_ip === '127.0.0.1' || $client_ip === '::1');
+        $is_loopback = Metzler_Webshield_Request::is_own_server_request();
         
         $script_name = $_SERVER['SCRIPT_NAME'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
@@ -53,18 +66,21 @@ class Metzler_Webshield_WAF {
         $this->inspect_payload(wp_unslash($_GET), 'GET'); // phpcs:ignore WordPress.Security.NonceVerification
         $this->inspect_payload(wp_unslash($_POST), 'POST'); // phpcs:ignore WordPress.Security.NonceVerification
         $this->inspect_payload(wp_unslash($_COOKIE), 'COOKIE');
+        $this->inspect_json_body();
         
         // Inspect Raw URIs (Crucial for pretty permalinks where $_GET is empty during MU phase)
         if ( isset($_SERVER['REQUEST_URI']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( wp_unslash($_SERVER['REQUEST_URI']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $request_uri = wp_unslash($_SERVER['REQUEST_URI']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( $request_uri, 'uri' );
+            $this->inspect_string( (string) wp_parse_url( $request_uri, PHP_URL_PATH ), 'path' );
         }
         if ( isset($_SERVER['QUERY_STRING']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( wp_unslash($_SERVER['QUERY_STRING']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( wp_unslash($_SERVER['QUERY_STRING']), 'uri' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
         // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots)
         if ( ! $is_loopback && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( wp_unslash($_SERVER['HTTP_USER_AGENT']) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( wp_unslash($_SERVER['HTTP_USER_AGENT']), 'user_agent' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
     }
     
@@ -80,10 +96,11 @@ class Metzler_Webshield_WAF {
         if ( !isset($_SERVER['HTTP_ACCEPT']) && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET' ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             
-            // Allow known crawlers that sometimes drop Accept headers (e.g., Google-Read-Aloud)
-            $is_known_bot = preg_match('/Googlebot|Google-Read-Aloud|bingbot|YandexBot|Applebot|DuckDuckBot|Slurp|Baiduspider/i', $user_agent);
+            // Allow crawlers that sometimes drop Accept headers (e.g., Google-Read-Aloud). The User-Agent is
+            // enough here: anyone can send an Accept header, so this check never stopped a determined client.
+            $is_known_bot = preg_match( '/google|bingbot|bingpreview|yandex|baiduspider|Applebot|DuckDuckBot|Slurp/i', $user_agent );
             
-            if ( ! $is_known_bot && ! str_contains( $uri, 'xmlrpc.php' ) && ! str_contains( $uri, 'wp-json' ) ) {
+            if ( ! $is_known_bot && strpos( $uri, 'xmlrpc.php' ) === false && strpos( $uri, 'wp-json' ) === false ) {
                 $this->block_request( 'Browser_Integrity', 'Empty Accept Header' );
             }
         }
@@ -97,25 +114,28 @@ class Metzler_Webshield_WAF {
     
     private function load_rules(): void {
         // Built-in rule set, used until a connected site has synchronized cloud rules.
+        // Rules look for query structure (quotes, operators, SQL/JS syntax) rather than single words, so
+        // ordinary text like "select a size from the list" or "please delete my data" passes.
         $local_rules = array(
             'SQLi' => array(
-                '/(?:\b(?:union|select|insert|update|delete|drop|truncate|alter|create|rename|desc|replace)\b.*(?:from|into|table|database))/i',
-                '/(?:\b(?:information_schema|mysql_.*\b|pg_.*\b|sysobjects|syscolumns|xp_cmdshell)\b)/i',
-                '/(?:waitfor\s+delay\s+\'|\bbenchmark\s*\()/i',
-                '/(?:--\s*$|\/\*.*?\*\/|;\s*(?:declare|set|exec|execute)\b)/i',
-                '/(?:\b(?:concat|group_concat|load_file|outfile|dumpfile)\b\s*\()/i'
+                '/\bunion(?:\s|\/\*.*?\*\/|\()+(?:all\b|distinct\b)?(?:\s|\/\*.*?\*\/|\()*select\b/is',
+                '/[\'"`)]\s*(?:\b(?:or|and|xor)\b|\|\||&&)\s*[\'"`(]{0,2}\s*[\w.-]+\s*[\'"`)]{0,2}\s*(?:=|<|>|\blike\b|\brlike\b|\bregexp\b|\bis\s+not\b)/i',
+                '/\b(?:waitfor\s+delay\s+\'|benchmark\s*\(\s*\d|sleep\s*\(\s*\d+(?:\.\d+)?\s*\)|pg_sleep\s*\()|\b(?:information_schema|sysobjects|syscolumns|xp_cmdshell|pg_catalog|mysql\.user)\b/i',
+                '/;\s*(?:(?:drop|truncate|alter|create)\s+(?:table|database|schema|user)\b|delete\s+from\b|insert\s+into\b|exec(?:ute)?\s|declare\s+@|shutdown\b)|[\'"`)]\s*(?:--|#)\s*$/i',
+                '/\b(?:group_concat|load_file|extractvalue|updatexml)\s*\(|\binto\s+(?:out|dump)file\b|\bconcat(?:_ws)?\s*\(\s*0x|\/\*!\d*|\b(?:union|select|from|where|and|or)\/\*|\*\/(?:union|select|from|where|and|or)\b/i',
             ),
             'XSS' => array(
                 '/(?:[<‹⟨]script.*?[>›⟩]?)/is',
-                '/(?:[<‹⟨].*?\bon(?:load|error|click|mouseover|keydown|keyup)\s*=)/is',
+                '/[<‹⟨][^>]*?\bon[a-z]{3,20}\s*=/is',
                 '/(?:javascript:|vbscript:|data:text\/html)/i',
-                '/(?:eval\s*\(|setTimeout\s*\(|setInterval\s*\()/i',
+                '/\b(?:eval|setTimeout|setInterval|Function)\s*\(\s*(?:atob|unescape|decodeURI(?:Component)?|String\.fromCharCode)\b/i',
                 '/(?:document\.(?:cookie|location|write|body)|window\.(?:location|name))/i'
             ),
             'LFI' => array(
-                '/(?:\.\.\/|\.\.\\\\|\.\.\/|%2e%2e%2f)/i',
+                '/(?:\.\.\/|\.\.\\\\|%2e%2e%2f)/i',
                 '/(?:etc\/passwd|etc\/shadow|etc\/hosts|boot\.ini|win\.ini|windows\\\\system32)/i',
-                '/(?:%00|\\0)/'
+                '/(?:%00|\\0)/',
+                '/\b(?:php|phar|expect|zip|glob):\/\//i'
             ),
             'Bad_Bots' => array(
                 '/(?:nikto|sqlmap|nmap|zmeu|dirbuster|havij|curl|wget|python-requests|libwww-perl)/i'
@@ -134,35 +154,87 @@ class Metzler_Webshield_WAF {
         
         foreach ( $payload as $key => $value ) {
             // Ignore some false-positive-heavy WordPress core fields
-            if ( in_array(strtolower($key), array('content', 'post_content', 'excerpt', 'html', 'description')) ) {
+            if ( in_array(strtolower((string) $key), array('content', 'post_content', 'excerpt', 'html', 'description')) ) {
                 continue;
             }
             
             if ( is_array($value) ) {
                 $this->inspect_payload($value, $source);
-            } else {
-                $this->inspect_string( $value );
+            } elseif ( is_scalar($value) ) {
+                $this->inspect_string( (string) $value );
             }
         }
     }
+
+    /**
+     * REST API requests with a JSON body never reach $_POST, so they are decoded and inspected here.
+     */
+    private function inspect_json_body(): void {
+        $content_type = $_SERVER['CONTENT_TYPE'] ?? ( $_SERVER['HTTP_CONTENT_TYPE'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        if ( stripos( (string) $content_type, 'json' ) === false ) {
+            return;
+        }
+        $length = (int) ( $_SERVER['CONTENT_LENGTH'] ?? 0 ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        if ( $length > self::MAX_JSON_BODY ) {
+            return;
+        }
+
+        $raw = file_get_contents( 'php://input', false, null, 0, self::MAX_JSON_BODY );
+        if ( false === $raw || '' === trim( $raw ) ) {
+            return;
+        }
+
+        $data = json_decode( $raw, true );
+        if ( is_array( $data ) ) {
+            $this->inspect_payload( $data, 'JSON' );
+        } elseif ( is_scalar( $data ) ) {
+            $this->inspect_string( (string) $data );
+        } else {
+            // Not valid JSON despite the header: inspect it as it is
+            $this->inspect_string( $raw );
+        }
+    }
     
-    private function inspect_string( $string ): void {
+    /**
+     * @param string $source param (GET/POST/cookie/JSON value), uri, path or user_agent
+     */
+    private function inspect_string( $string, string $source = 'param' ): void {
         if ( empty($string) || ! is_string($string) ) return;
         
-        // Decode for inspection
-        $string = urldecode($string);
-        
-        foreach ( $this->rules as $category => $patterns ) {
-            foreach ( $patterns as $pattern ) {
-                if ( preg_match($pattern, $string) ) {
-                    $this->block_request( $category, $string );
+        foreach ( self::decoded_variants( $string ) as $variant ) {
+            foreach ( $this->rules as $category => $patterns ) {
+                $scope = self::SCOPED_CATEGORIES[ $category ] ?? null;
+                // Scoped rules only run on their part of the request; the path is part of the URI,
+                // so it only gets the path-specific rules
+                if ( $scope ? $scope !== $source : 'path' === $source ) {
+                    continue;
+                }
+                foreach ( (array) $patterns as $pattern ) {
+                    if ( preg_match($pattern, $variant) ) {
+                        $this->block_request( $category, $variant );
+                    }
                 }
             }
         }
     }
+
+    /**
+     * The value itself plus every further URL-decoded form of it.
+     */
+    private static function decoded_variants( string $string ): array {
+        $variants = array( $string );
+        for ( $i = 0; $i < self::MAX_DECODE_PASSES; $i++ ) {
+            $decoded = urldecode( $string );
+            if ( $decoded === $string ) {
+                break;
+            }
+            $variants[] = $string = $decoded;
+        }
+        return $variants;
+    }
     
     private function block_request( $category, $payload = '' ): void {
-        $ip = class_exists( 'Metzler_Webshield' ) ? Metzler_Webshield::get_client_ip() : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: '127.0.0.1' );
+        $ip = Metzler_Webshield_Request::client_ip();
         
         // WAF blocks are logged asynchronously via the telemetry buffer file to prevent MySQL crashing during DDoS.
         
@@ -180,7 +252,7 @@ class Metzler_Webshield_WAF {
             $headers = getallheaders();
         } else {
             foreach ($_SERVER as $name => $value) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-                if ( str_starts_with( $name, 'HTTP_' ) ) {
+                if ( strpos( $name, 'HTTP_' ) === 0 ) {
                     $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
                 }
             }

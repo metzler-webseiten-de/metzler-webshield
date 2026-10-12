@@ -74,6 +74,7 @@ class Metzler_Webshield_Logger {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_logs'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
 
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- trusted table name ($wpdb->prefix + constant); %i needs WP 6.2
         return $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
             $wpdb->prepare(
                 "SELECT * FROM $table_name 
@@ -83,6 +84,7 @@ class Metzler_Webshield_Logger {
                 $limit
             )
         ) ?: array();
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     }
 
     /**
@@ -95,11 +97,13 @@ class Metzler_Webshield_Logger {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_logs'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
 
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- trusted table name ($wpdb->prefix + constant), no user input
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
             "SELECT COUNT(*) FROM $table_name 
              WHERE severity IN ('warning', 'error') 
                AND type NOT IN ('waf', 'system')"
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     }
 
     /**
@@ -111,9 +115,10 @@ class Metzler_Webshield_Logger {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_logs'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
 
-        // 24 hours ago in local time format (matching current_time('mysql'))
-        $since = date( 'Y-m-d H:i:s', current_time( 'timestamp' ) - DAY_IN_SECONDS );
+        // 24 hours ago in the site's timezone (matching current_time('mysql'))
+        $since = wp_date( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
 
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- trusted table name ($wpdb->prefix + constant); %i needs WP 6.2
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
             $wpdb->prepare(
                 "SELECT * FROM $table_name 
@@ -122,6 +127,7 @@ class Metzler_Webshield_Logger {
                 $since
             )
         ) ?: array();
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
         $total_attacks = 0;
         $categories = array();

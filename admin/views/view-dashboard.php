@@ -22,12 +22,21 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     // SSR: Fetch Recent Logs for the Log tab
     $logs = Metzler_Webshield_Logger::get_logs( 100 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     
-    $is_licensed = get_option('metzler_webshield_is_licensed', false); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $license_tier = get_option('metzler_webshield_license_tier', 'free'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $is_pro = $is_licensed && ('pro' === $license_tier); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $is_connected = Metzler_Webshield::is_cloud_connected(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $is_pro = Metzler_Webshield_Admin::is_pro(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $ui_texts = Metzler_Webshield_Admin::ui_texts(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    $builtin_tabs = array( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+        'tab-dashboard'  => __( 'Overview', 'metzler-webshield' ),
+        'tab-logs'       => __( 'Log', 'metzler-webshield' ),
+        'tab-quarantine' => __( 'Quarantine', 'metzler-webshield' ),
+        'tab-settings'   => __( 'Settings', 'metzler-webshield' ),
+        'tab-license'    => __( 'Threat Cloud', 'metzler-webshield' ),
+    );
+    // Add-ons may add tabs (id => label) and render them via the metzler_webshield_render_tab_{id} action
+    $tabs = (array) apply_filters( 'metzler_webshield_admin_tabs', $builtin_tabs ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
     $current_domain = wp_parse_url(home_url(), PHP_URL_HOST); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $raw_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-    $tab_alias_map = array(
+    $metzler_webshield_raw_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'dashboard'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $metzler_webshield_tab_alias_map = array(
         'overview'   => 'tab-dashboard',
         'dashboard'  => 'tab-dashboard',
         'log'        => 'tab-logs',
@@ -38,14 +47,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         'license'    => 'tab-license',
         'licence'    => 'tab-license',
     );
-    if (isset($tab_alias_map[$raw_tab])) {
-        $current_tab = $tab_alias_map[$raw_tab];
+    if (isset($metzler_webshield_tab_alias_map[$metzler_webshield_raw_tab])) {
+        $metzler_webshield_current_tab = $metzler_webshield_tab_alias_map[$metzler_webshield_raw_tab];
     } else {
-        $current_tab = strpos($raw_tab, 'tab-') === 0 ? $raw_tab : 'tab-' . $raw_tab;
+        $metzler_webshield_current_tab = strpos($metzler_webshield_raw_tab, 'tab-') === 0 ? $metzler_webshield_raw_tab : 'tab-' . $metzler_webshield_raw_tab;
     }
-    $valid_tabs = array('tab-dashboard', 'tab-logs', 'tab-quarantine', 'tab-settings', 'tab-license');
-    if (!in_array($current_tab, $valid_tabs, true)) {
-        $current_tab = 'tab-dashboard';
+    $valid_tabs = array_keys($tabs); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+    if (!in_array($metzler_webshield_current_tab, $valid_tabs, true)) {
+        $metzler_webshield_current_tab = 'tab-dashboard';
     }
     ?>
     <div class="metzler-webshield-brand-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 12px;">
@@ -62,18 +71,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     </div>
 
     <nav class="nav-tab-wrapper metzler-webshield-nav-tabs" style="margin-bottom: 20px;">
-        <a href="#tab-dashboard" class="nav-tab <?php echo $current_tab === 'tab-dashboard' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-dashboard"><?php echo esc_html__("Overview", "metzler-webshield"); ?></a>
-        <a href="#tab-logs" class="nav-tab <?php echo $current_tab === 'tab-logs' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-logs"><?php echo esc_html__("Log", "metzler-webshield"); ?></a>
-        <a href="#tab-quarantine" class="nav-tab <?php echo $current_tab === 'tab-quarantine' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-quarantine"><?php echo esc_html__("Quarantine", "metzler-webshield"); ?></a>
-        <a href="#tab-settings" class="nav-tab <?php echo $current_tab === 'tab-settings' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-settings"><?php echo esc_html__("Settings", "metzler-webshield"); ?></a>
-        <a href="#tab-license" class="nav-tab <?php echo $current_tab === 'tab-license' ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="tab-license">
-            <?php echo esc_html__("License", "metzler-webshield"); ?>
-            <?php if ($is_pro): ?>
-                <span class="mws-tier-pill mws-tier-pill-pro"><?php echo esc_html__("PRO", "metzler-webshield"); ?></span>
-            <?php elseif ($is_licensed): ?>
-                <span class="mws-tier-pill mws-tier-pill-free"><?php echo esc_html__("FREE", "metzler-webshield"); ?></span>
-            <?php endif; ?>
-        </a>
+        <?php foreach ($tabs as $metzler_webshield_tab_id => $metzler_webshield_tab_label): ?>
+            <a href="#<?php echo esc_attr($metzler_webshield_tab_id); ?>" class="nav-tab <?php echo $metzler_webshield_current_tab === $metzler_webshield_tab_id ? 'nav-tab-active' : ''; ?> metzler-webshield-tab-link" data-tab="<?php echo esc_attr($metzler_webshield_tab_id); ?>">
+                <?php echo esc_html($metzler_webshield_tab_label); ?>
+                <?php if ($metzler_webshield_tab_id === 'tab-license' && $is_pro): ?>
+                    <span class="mws-tier-pill mws-tier-pill-pro"><?php echo esc_html__("PRO", "metzler-webshield"); ?></span>
+                <?php endif; ?>
+            </a>
+        <?php endforeach; ?>
     </nav>
 
     <script>
@@ -93,7 +98,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 'tab-license': 'tab-license', 'tab-licence': 'tab-license'
             };
             var target = map[clean] || (clean.indexOf('tab-') === 0 ? clean : 'tab-' + clean);
-            var valid = ['tab-dashboard', 'tab-logs', 'tab-quarantine', 'tab-settings', 'tab-license'];
+            var valid = <?php echo wp_json_encode($valid_tabs); ?>;
             if (valid.indexOf(target) !== -1) {
                 var applyInitialTab = function() {
                     var contents = document.querySelectorAll('.metzler-webshield-tab-content');
@@ -121,7 +126,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     })();
     </script>
     
-    <div id="tab-dashboard" class="metzler-webshield-tab-content" style="display:<?php echo $current_tab === 'tab-dashboard' ? 'block' : 'none'; ?>;">
+    <div id="tab-dashboard" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === 'tab-dashboard' ? 'block' : 'none'; ?>;">
 
     <!-- Hero Status Section (The Big Shield) -->
     <div id="metzler-webshield-hero" class="metzler-webshield-hero status-<?php echo esc_attr($hero_status); ?>">
@@ -130,8 +135,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 <span class="dashicons <?php echo esc_attr($hero_status) === 'safe' ? 'dashicons-shield' : 'dashicons-warning'; ?>"></span>
             </div>
             <div class="hero-content">
-                <h1 id="hero-title"><?php echo esc_attr($hero_status) === 'safe' ? ($is_licensed ? ($is_pro ? esc_html__('Your website is fully secured with Pro.', 'metzler-webshield') : esc_html__('Your website is secure (Community Tier).', 'metzler-webshield')) : esc_html__('Basic protection active.', 'metzler-webshield')) : esc_html__('Security risks detected!', 'metzler-webshield'); ?></h1>
-                <p id="hero-subtitle"><?php echo esc_attr($hero_status) === 'safe' ? ($is_licensed ? ($is_pro ? esc_html__('All background guards and Pro cloud firewall rules are active.', 'metzler-webshield') : esc_html__('Community Free protection active. Upgrade to Pro for advanced cloud firewall rules and central management.', 'metzler-webshield')) : esc_html__('Activate a free license to unlock Smart Scan & Cloud Features.', 'metzler-webshield')) : esc_html__('Please check the security log.', 'metzler-webshield'); ?></p>
+                <h1 id="hero-title"><?php echo $hero_status === 'safe' ? esc_html($ui_texts['hero_secure']) : esc_html__('Security risks detected!', 'metzler-webshield'); ?></h1>
+                <p id="hero-subtitle"><?php echo $hero_status === 'safe' ? esc_html($ui_texts['hero_guards_active']) : esc_html__('Please check the security log.', 'metzler-webshield'); ?></p>
                 
                 <div id="metzler-webshield-scan-controls">
                     <button id="btn-start-scan" class="button button-primary button-hero metzler-webshield-smart-scan-btn">
@@ -202,11 +207,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             <div class="upgrade-banner-content">
                 <div class="upgrade-banner-badge"><?php echo esc_html__("RECOMMENDED UPGRADE", "metzler-webshield"); ?></div>
                 <h3 class="upgrade-banner-title"><?php echo esc_html__("Upgrade to Metzler Webshield Pro", "metzler-webshield"); ?></h3>
-                <p class="upgrade-banner-desc"><?php echo esc_html__("Get faster cloud firewall updates (Community rules are 7 days behind), centralized multi-site monitoring, and deep attack forensics for your domain.", "metzler-webshield"); ?></p>
+                <p class="upgrade-banner-desc"><?php echo esc_html__("Pro delivers new cloud firewall rules immediately instead of 7 days later, plus vulnerability intelligence for your core and plugins and centralized multi-site monitoring.", "metzler-webshield"); ?></p>
                 <div class="upgrade-banner-features">
-                    <span class="upgrade-feature-item"><span class="dashicons dashicons-yes-alt"></span> <?php echo esc_html__("Faster WAF Updates (Community rules are 7 days behind)", "metzler-webshield"); ?></span>
+                    <span class="upgrade-feature-item"><span class="dashicons dashicons-yes-alt"></span> <?php echo esc_html__("Real-time WAF rules (Community rules are 7 days behind)", "metzler-webshield"); ?></span>
+                    <span class="upgrade-feature-item"><span class="dashicons dashicons-yes-alt"></span> <?php echo esc_html__("Known-vulnerability alerts for core and plugins", "metzler-webshield"); ?></span>
                     <span class="upgrade-feature-item"><span class="dashicons dashicons-yes-alt"></span> <?php echo esc_html__("Centralized Cloud Dashboard (dash.metzler-webshield.de)", "metzler-webshield"); ?></span>
-                    <span class="upgrade-feature-item"><span class="dashicons dashicons-yes-alt"></span> <?php echo esc_html__("Deep Attack Forensics & Bot Protection", "metzler-webshield"); ?></span>
                 </div>
             </div>
             <div class="upgrade-banner-cta">
@@ -280,7 +285,7 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
                         // Server-side Fetch to protect admin privacy (no direct browser calls to external APIs)
                         $metzler_webshield_global_stats_json = get_transient('metzler_webshield_global_stats');
                         if ( false === $metzler_webshield_global_stats_json ) {
-                            $metzler_webshield_api_response = wp_remote_get('https://api.metzler-webshield.de/api/stats/attacks-24h', array('timeout' => 3));
+                            $metzler_webshield_api_response = wp_remote_get(METZLER_WEBSHIELD_API_URL . '/stats/attacks-24h', array('timeout' => 3));
                             if ( ! is_wp_error( $metzler_webshield_api_response ) && wp_remote_retrieve_response_code( $metzler_webshield_api_response ) === 200 ) {
                                 // Safely decode and re-encode to ensure it's valid JSON and harmless
                                 $metzler_webshield_decoded = json_decode( wp_remote_retrieve_body( $metzler_webshield_api_response ), true );
@@ -384,7 +389,7 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
     </div> <!-- End Tab Dashboard -->
     
     <!-- Tab Protokoll (Experten-Ansicht) -->
-    <div id="tab-logs" class="metzler-webshield-tab-content" style="display:<?php echo $current_tab === 'tab-logs' ? 'block' : 'none'; ?>;">
+    <div id="tab-logs" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === 'tab-logs' ? 'block' : 'none'; ?>;">
                 <div class="postbox metzler-webshield-postbox">
                     <h2 class="hndle">
                         <span class="dashicons dashicons-list-view"></span>
@@ -425,7 +430,7 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
     <!-- End Tab Protokoll -->
     
     <!-- Tab <?php echo esc_html__("Quarantine", "metzler-webshield"); ?> -->
-    <div id="tab-quarantine" class="metzler-webshield-tab-content" style="display:<?php echo $current_tab === 'tab-quarantine' ? 'block' : 'none'; ?>;">
+    <div id="tab-quarantine" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === 'tab-quarantine' ? 'block' : 'none'; ?>;">
         <div class="postbox metzler-webshield-postbox">
             <h2 class="hndle">
                 <span class="dashicons dashicons-lock"></span>
@@ -466,7 +471,7 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
     </div>
     
     <!-- Tab Settings -->
-    <div id="tab-settings" class="metzler-webshield-tab-content" style="display:<?php echo $current_tab === 'tab-settings' ? 'block' : 'none'; ?>;">
+    <div id="tab-settings" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === 'tab-settings' ? 'block' : 'none'; ?>;">
         <div class="postbox metzler-webshield-postbox">
             <h2 class="hndle">
                 <span class="dashicons dashicons-admin-settings"></span>
@@ -594,7 +599,10 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                                 <input type="checkbox" id="metzler-webshield-setting-telemetry" <?php echo get_option('metzler_webshield_enable_telemetry', '0') ? 'checked' : ''; ?>>
                                 <strong><?php echo esc_html__("Send attack data for network analysis (GDPR-compliant)", "metzler-webshield"); ?></strong>
                             </label>
-                            <p class="description"><?php echo esc_html__("Helps train our global security network. Only metadata (IP addresses and malicious payloads) of clearly blocked attackers is reported (legitimate interest under Art. 6(1)(f) GDPR). Normal website visitors are not tracked.", "metzler-webshield"); ?></p>
+                            <p class="description"><?php echo esc_html__("Optional, off by default. When enabled, metadata of blocked requests (IP address, request URI, user agent, attack type and the matched payload) is sent to the Metzler Webshield Threat Intelligence API every 5 minutes, including blocks logged before you opted in. Cookies and authorization headers are never sent. Normal website visitors are not tracked.", "metzler-webshield"); ?></p>
+                            <?php if (! $is_connected): ?>
+                                <p class="description" style="color:#996800;"><?php echo esc_html__("Requires a connection to the Threat Intelligence Cloud (see the \"Threat Cloud\" tab). Nothing is sent until the site is connected.", "metzler-webshield"); ?></p>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <tr>
@@ -605,6 +613,7 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                             <p class="description"><?php echo esc_html__("Instantly rebuilds the fingerprint of all files. Useful if you have just intentionally modified files via FTP.", "metzler-webshield"); ?></p>
                         </td>
                     </tr>
+                    <?php do_action( 'metzler_webshield_settings_rows' ); ?>
                 </table>
                 <p class="submit metzler-webshield-submit-area">
                     <button type="button" id="btn-save-settings" class="button button-primary button-large"><?php echo esc_html__("Save Settings", "metzler-webshield"); ?></button>
@@ -614,135 +623,91 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
         </div>
     </div>
     
-    <!-- Tab License -->
-    <div id="tab-license" class="metzler-webshield-tab-content" style="display:<?php echo $current_tab === 'tab-license' ? 'block' : 'none'; ?>;">
+    <!-- Tab Threat Cloud (optional connection, used for telemetry sharing and add-ons) -->
+    <div id="tab-license" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === 'tab-license' ? 'block' : 'none'; ?>;">
+        <?php do_action( 'metzler_webshield_license_card' ); ?>
         <div class="postbox metzler-webshield-postbox">
             <h2 class="hndle">
-                <span class="dashicons dashicons-admin-network"></span>
-                <span><?php echo esc_html__("License & Subscription", "metzler-webshield"); ?></span>
+                <span class="dashicons dashicons-cloud"></span>
+                <span><?php echo esc_html__("Threat Intelligence Cloud", "metzler-webshield"); ?></span>
             </h2>
             <div class="inside">
-                <?php if ($is_licensed): ?>
-                    <?php if ($is_pro): ?>
-                        <!-- PRO ACTIVE CARD -->
-                        <div class="mws-license-card mws-license-card-pro">
-                            <div class="mws-license-header">
-                                <div class="mws-license-title-wrap">
-                                    <span class="dashicons dashicons-shield-alt mws-license-icon" style="color: #00a32a;"></span>
-                                    <div>
-                                        <h3 class="mws-license-title"><?php echo esc_html__("Metzler Webshield Pro is Active", "metzler-webshield"); ?></h3>
-                                        <p class="mws-license-subtitle"><?php echo esc_html__("Your domain is protected with advanced cloud firewall rules and cloud threat intelligence.", "metzler-webshield"); ?></p>
-                                    </div>
-                                </div>
-                                <span class="mws-status-badge mws-status-badge-pro"><?php echo esc_html__("PRO ACTIVE", "metzler-webshield"); ?></span>
-                            </div>
-
-                            <div class="mws-license-details">
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("Protected Domain:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value"><code><?php echo esc_html($current_domain); ?></code></span>
-                                </div>
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("WAF Rule Channel:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value" style="color: #008a20; font-weight: 600;">
-                                        <span class="dashicons dashicons-yes-alt" style="vertical-align: text-top; font-size: 16px;"></span>
-                                        <?php echo esc_html__("Advanced Cloud Threat Stream", "metzler-webshield"); ?>
-                                    </span>
-                                </div>
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("Account Email:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value"><?php echo esc_html(get_option('metzler_webshield_verified_email', '-')); ?></span>
+                <?php if ($is_connected): ?>
+                    <div class="mws-license-card mws-license-card-free">
+                        <div class="mws-license-header">
+                            <div class="mws-license-title-wrap">
+                                <span class="dashicons dashicons-cloud-saved mws-license-icon" style="color: #2271b1;"></span>
+                                <div>
+                                    <h3 class="mws-license-title"><?php echo esc_html__("This site is connected", "metzler-webshield"); ?></h3>
+                                    <p class="mws-license-subtitle"><?php echo esc_html__("Your firewall receives the community cloud rules every hour. All local protection also works without a connection.", "metzler-webshield"); ?></p>
                                 </div>
                             </div>
+                            <span class="mws-status-badge mws-status-badge-free"><?php echo esc_html__("CONNECTED", "metzler-webshield"); ?></span>
+                        </div>
 
-                            <div class="mws-license-actions">
-                                <a href="https://dash.metzler-webshield.de/dashboard/<?php echo esc_attr(urlencode($current_domain)); ?>" target="_blank" rel="noopener" class="button button-primary button-large mws-btn-inline-icon">
-                                    <span><?php echo esc_html__("Open Cloud Dashboard", "metzler-webshield"); ?></span>
-                                    <span class="dashicons dashicons-external"></span>
-                                </a>
-                                <button type="button" id="btn-recheck-license" class="button button-secondary"><?php echo esc_html__("Recheck License", "metzler-webshield"); ?></button>
-                                <button type="button" id="btn-remove-license" class="button button-link-delete" style="color: #d63638; margin-left: 10px;"><?php echo esc_html__("Remove License", "metzler-webshield"); ?></button>
-                                <span id="license-recheck-feedback" class="metzler-webshield-action-feedback"></span>
+                        <div class="mws-license-details">
+                            <div class="mws-detail-row">
+                                <span class="mws-detail-label"><?php echo esc_html__("Domain:", "metzler-webshield"); ?></span>
+                                <span class="mws-detail-value"><code><?php echo esc_html($current_domain); ?></code></span>
+                            </div>
+                            <div class="mws-detail-row">
+                                <span class="mws-detail-label"><?php echo esc_html__("Account Email:", "metzler-webshield"); ?></span>
+                                <span class="mws-detail-value"><?php echo esc_html(get_option('metzler_webshield_verified_email', '-')); ?></span>
+                            </div>
+                            <?php if (! $is_pro): ?>
+                            <div class="mws-detail-row">
+                                <span class="mws-detail-label"><?php echo esc_html__("WAF Rule Channel:", "metzler-webshield"); ?></span>
+                                <span class="mws-detail-value" style="color: #646970;"><?php echo esc_html__("Community Rules (7 days behind Pro updates)", "metzler-webshield"); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <div class="mws-detail-row">
+                                <span class="mws-detail-label"><?php echo esc_html__("Last Rule Sync:", "metzler-webshield"); ?></span>
+                                <span class="mws-detail-value"><?php echo Metzler_Webshield_Cloud_Rules::last_synced() ? esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), Metzler_Webshield_Cloud_Rules::last_synced())) : esc_html__('Not yet synchronized', 'metzler-webshield'); ?></span>
+                            </div>
+                            <div class="mws-detail-row">
+                                <span class="mws-detail-label"><?php echo esc_html__("Telemetry sharing:", "metzler-webshield"); ?></span>
+                                <span class="mws-detail-value"><?php echo Metzler_Webshield::telemetry_allowed() ? esc_html__('Enabled', 'metzler-webshield') : esc_html__('Disabled (change in Settings)', 'metzler-webshield'); ?></span>
                             </div>
                         </div>
 
-                    <?php else: ?>
-                        <!-- FREE TIER CARD -->
-                        <div class="mws-license-card mws-license-card-free">
-                            <div class="mws-license-header">
-                                <div class="mws-license-title-wrap">
-                                    <span class="dashicons dashicons-shield mws-license-icon" style="color: #2271b1;"></span>
-                                    <div>
-                                        <h3 class="mws-license-title"><?php echo esc_html__("Metzler Webshield Community (Free Tier)", "metzler-webshield"); ?></h3>
-                                        <p class="mws-license-subtitle"><?php echo esc_html__("Basic security activated. Upgrade to Pro to unlock advanced cloud firewall rules and central management.", "metzler-webshield"); ?></p>
-                                    </div>
-                                </div>
-                                <span class="mws-status-badge mws-status-badge-free"><?php echo esc_html__("FREE TIER", "metzler-webshield"); ?></span>
-                            </div>
-
-                            <div class="mws-license-details">
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("Protected Domain:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value"><code><?php echo esc_html($current_domain); ?></code></span>
-                                </div>
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("Account Email:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value"><?php echo esc_html(get_option('metzler_webshield_verified_email', '-')); ?></span>
-                                </div>
-                                <div class="mws-detail-row">
-                                    <span class="mws-detail-label"><?php echo esc_html__("WAF Rule Channel:", "metzler-webshield"); ?></span>
-                                    <span class="mws-detail-value" style="color: #646970;">
-                                        <?php echo esc_html__("Community Rules (7 days behind Pro updates)", "metzler-webshield"); ?>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="mws-license-actions">
-                                <a href="https://dash.metzler-webshield.de/billing/pricing?domain=<?php echo esc_attr(urlencode($current_domain)); ?>" target="_blank" rel="noopener" class="button button-primary mws-btn-inline-icon">
-                                    <span><?php echo esc_html__("Upgrade to Pro", "metzler-webshield"); ?></span>
-                                    <span class="dashicons dashicons-external"></span>
-                                </a>
-                                <button type="button" id="btn-recheck-license" class="button button-secondary"><?php echo esc_html__("Recheck License", "metzler-webshield"); ?></button>
-                                <button type="button" id="btn-remove-license" class="button button-link-delete" style="color: #d63638; margin-left: 10px;"><?php echo esc_html__("Remove License", "metzler-webshield"); ?></button>
-                                <span id="license-recheck-feedback" class="metzler-webshield-action-feedback"></span>
-                            </div>
+                        <div class="mws-license-actions">
+                            <button type="button" id="btn-recheck-license" class="button button-secondary"><?php echo esc_html__("Recheck Connection", "metzler-webshield"); ?></button>
+                            <button type="button" id="btn-remove-license" class="button button-link-delete" style="color: #d63638; margin-left: 10px;"><?php echo esc_html__("Disconnect", "metzler-webshield"); ?></button>
+                            <span id="license-recheck-feedback" class="metzler-webshield-action-feedback"></span>
                         </div>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <div style="padding: 20px; background: #fff8e5; border-left: 4px solid #f0b849; margin-bottom: 20px;">
-                        <h3 style="margin-top:0;"><span class="dashicons dashicons-lock"></span> <?php echo esc_html__("License Required", "metzler-webshield"); ?></h3>
-                        <p><?php echo esc_html__("Please request a free license key to use Metzler_Webshield on this domain.", "metzler-webshield"); ?></p>
                     </div>
+                <?php else: ?>
+                    <p><?php echo esc_html__("Optional: connect this site to the Metzler Webshield Threat Intelligence Cloud with a free key to receive the community cloud firewall rules (published 7 days after Pro) and, if you like, share attack telemetry. All protection features of this plugin also work without a connection.", "metzler-webshield"); ?></p>
                     
                     <div style="margin-bottom: 30px;">
-                        <h4><?php echo esc_html__("1. Request License Key", "metzler-webshield"); ?></h4>
+                        <h4><?php echo esc_html__("1. Request a free key", "metzler-webshield"); ?></h4>
                         <table class="form-table">
                             <tr>
                                 <th scope="row"><?php echo esc_html__("Your Email Address", "metzler-webshield"); ?></th>
                                 <td>
-                                    <?php $current_user = wp_get_current_user(); ?>
+                                    <?php $current_user = wp_get_current_user(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals ?>
                                     <input type="email" id="metzler-webshield-license-email" class="regular-text" value="<?php echo esc_attr($current_user->user_email); ?>">
                                     <button type="button" id="btn-request-license" class="button button-secondary"><?php echo esc_html__("Request Key", "metzler-webshield"); ?></button>
                                     <span id="license-request-feedback" class="metzler-webshield-action-feedback"></span>
-                                    <p class="description"><?php echo esc_html__("The key will be sent to this email address.", "metzler-webshield"); ?></p>
+                                    <p class="description"><?php echo esc_html__("Your email address and this site's domain are sent to the Metzler Webshield API; the key is sent to this address.", "metzler-webshield"); ?></p>
                                 </td>
                             </tr>
                         </table>
                     </div>
                     
                     <div style="margin-bottom: 20px;">
-                        <h4><?php echo esc_html__("2. Verify License Key", "metzler-webshield"); ?></h4>
+                        <h4><?php echo esc_html__("2. Connect with your key", "metzler-webshield"); ?></h4>
                         <table class="form-table">
                             <tr>
-                                <th scope="row"><?php echo esc_html__("Enter License Key", "metzler-webshield"); ?></th>
+                                <th scope="row"><?php echo esc_html__("Key", "metzler-webshield"); ?></th>
                                 <td>
                                     <input type="text" id="metzler-webshield-license-token" class="regular-text" placeholder="<?php echo esc_attr__("E.g. A1B2C3D4E5F6G7H8", "metzler-webshield"); ?>">
-                                    <button type="button" id="btn-verify-license" class="button button-primary"><?php echo esc_html__("Verify License", "metzler-webshield"); ?></button>
+                                    <button type="button" id="btn-verify-license" class="button button-primary"><?php echo esc_html__("Connect", "metzler-webshield"); ?></button>
                                     <span id="license-verify-feedback" class="metzler-webshield-action-feedback"></span>
                                     <br><br>
                                     <label>
                                         <input type="checkbox" id="metzler-webshield-license-telemetry" value="1">
-                                        <?php echo esc_html__("I agree to share anonymous telemetry data to improve threat intelligence (optional).", "metzler-webshield"); ?>
+                                        <?php echo esc_html__("Share attack telemetry (optional): metadata of blocked requests, including previously logged blocks, is sent to the Threat Intelligence API. You can turn this off at any time in the settings.", "metzler-webshield"); ?>
                                     </label>
                                 </td>
                             </tr>
@@ -752,6 +717,12 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
             </div>
         </div>
     </div>
+
+    <?php foreach (array_diff_key($tabs, $builtin_tabs) as $metzler_webshield_tab_id => $metzler_webshield_tab_label): ?>
+        <div id="<?php echo esc_attr($metzler_webshield_tab_id); ?>" class="metzler-webshield-tab-content" style="display:<?php echo $metzler_webshield_current_tab === $metzler_webshield_tab_id ? 'block' : 'none'; ?>;">
+            <?php do_action( 'metzler_webshield_render_tab_' . $metzler_webshield_tab_id ); ?>
+        </div>
+    <?php endforeach; ?>
     
     <!-- Spacer for WP Footer -->
     <div style="clear:both; height:80px; width:100%;"></div>

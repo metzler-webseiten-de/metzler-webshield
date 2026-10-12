@@ -19,6 +19,28 @@ class Metzler_Webshield_Admin {
 
         // 3. Admin sidebar menu icon sizing
         add_action( 'admin_head', array( $this, 'enqueue_admin_menu_styles' ) );
+
+        // 4. Pro subscribers upgrading from 1.x need the separate Pro add-on
+        add_action( 'admin_notices', array( $this, 'render_pro_addon_notice' ) );
+        add_action( 'wp_ajax_metzler_webshield_dismiss_pro_notice', array( $this, 'ajax_dismiss_pro_notice' ) );
+    }
+
+    /**
+     * Status texts shown in the hero section and widgets. Add-ons may adjust them.
+     */
+    public static function ui_texts(): array {
+        return (array) apply_filters( 'metzler_webshield_ui_texts', array(
+            'hero_secure'        => __( 'Your website is protected.', 'metzler-webshield' ),
+            'hero_guards_active' => __( 'Firewall, rate limiter and background scanners are active.', 'metzler-webshield' ),
+            'tier_label'         => __( 'Free', 'metzler-webshield' ),
+        ) );
+    }
+
+    /**
+     * Whether an add-on reports an active premium subscription (only used to hide the upgrade banner).
+     */
+    public static function is_pro(): bool {
+        return (bool) apply_filters( 'metzler_webshield_is_pro', false );
     }
 
     public function enqueue_admin_menu_styles(): void {
@@ -53,30 +75,28 @@ class Metzler_Webshield_Admin {
         wp_enqueue_style( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/css/admin.css', array(), METZLER_WEBSHIELD_VERSION );
         wp_enqueue_script( 'metzler-webshield-chartjs', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/chart.min.js', array(), METZLER_WEBSHIELD_VERSION, true );
         wp_enqueue_script( 'metzler-webshield-admin', METZLER_WEBSHIELD_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery', 'metzler-webshield-chartjs' ), METZLER_WEBSHIELD_VERSION, true );
-        // Hero texts must match the server-rendered ones in view-dashboard.php, otherwise JS overwrites the tier info
-        $is_pro = get_option( 'metzler_webshield_is_licensed', false ) && ( 'pro' === get_option( 'metzler_webshield_license_tier', 'free' ) );
+        // Hero texts must match the server-rendered ones in view-dashboard.php
+        $ui_texts = self::ui_texts();
         wp_localize_script( 'metzler-webshield-admin', 'metzler_webshield_ajax', array(
             'ajax_url'    => admin_url( 'admin-ajax.php' ),
             'nonce'       => wp_create_nonce( 'metzler_webshield_nonce' ),
-            'is_licensed' => get_option( 'metzler_webshield_is_licensed', false ),
             'i18n'        => array(
-                'please_license'     => __('Please add your license key in the "License" tab first to unlock this feature.', 'metzler-webshield'),
                 'requesting'         => __('Requesting...', 'metzler-webshield'),
                 'request_key'        => __('Request Key', 'metzler-webshield'),
                 'enter_email'        => __('Please enter an email.', 'metzler-webshield'),
                 'enter_key'          => __('Please enter a key.', 'metzler-webshield'),
                 'verifying'          => __('Verifying...', 'metzler-webshield'),
-                'verify_license'     => __('Verify License', 'metzler-webshield'),
+                'verify_license'     => __('Connect', 'metzler-webshield'),
                 'rechecking'         => __('Checking...', 'metzler-webshield'),
-                'license_valid'      => __('License is valid!', 'metzler-webshield'),
-                'recheck_now'        => __('Recheck license now', 'metzler-webshield'),
+                'license_valid'      => __('Connection is valid!', 'metzler-webshield'),
+                'recheck_now'        => __('Recheck connection now', 'metzler-webshield'),
                 'delete_confirm'     => __('Are you sure you want to permanently delete this user?', 'metzler-webshield'),
                 'deleting'           => __('Deleting...', 'metzler-webshield'),
                 'deleted_ghost'      => __('Ghost Admin deleted!', 'metzler-webshield'),
                 'delete_error'       => __('Error deleting user.', 'metzler-webshield'),
                 'delete_user'        => __('Delete user', 'metzler-webshield'),
-                'license_invalid'    => __('License is invalid or expired. Cloud features will be locked now.', 'metzler-webshield'),
-                'confirm_remove'     => __('Do you really want to remove this license? Cloud features like Smart Scan and WAF Rule Sync will be deactivated.', 'metzler-webshield'),
+                'license_invalid'    => __('The key is invalid or expired. The cloud connection was disabled.', 'metzler-webshield'),
+                'confirm_remove'     => __('Do you really want to disconnect this site from the Threat Intelligence Cloud? Cloud firewall rules will be removed and telemetry sharing turned off.', 'metzler-webshield'),
                 'marked_safe'        => __('Marked as safe.', 'metzler-webshield'),
                 'moving'             => __('Moving...', 'metzler-webshield'),
                 'moved_quarantine'   => __('Moved to quarantine.', 'metzler-webshield'),
@@ -94,10 +114,8 @@ class Metzler_Webshield_Admin {
                 'request_error'      => __('Error during request.', 'metzler-webshield'),
                 'invalid_key'        => __('Invalid key.', 'metzler-webshield'),
                 // New UI states
-                'hero_secure'        => $is_pro ? __('Your website is fully secured with Pro.', 'metzler-webshield') : __('Your website is secure (Community Tier).', 'metzler-webshield'),
-                'hero_local_secure'  => __('Basic protection active.', 'metzler-webshield'),
-                'hero_guards_active' => $is_pro ? __('All background guards and Pro cloud firewall rules are active.', 'metzler-webshield') : __('Community Free protection active. Upgrade to Pro for advanced cloud firewall rules and central management.', 'metzler-webshield'),
-                'hero_local_desc'    => __('Activate a free license to unlock Smart Scan & Cloud Features.', 'metzler-webshield'),
+                'hero_secure'        => $ui_texts['hero_secure'],
+                'hero_guards_active' => $ui_texts['hero_guards_active'],
                 'hero_risks'         => __('Security risks detected!', 'metzler-webshield'),
                 'hero_risks_scan'    => __('Smart Scan is still running, but issues have already been detected.', 'metzler-webshield'),
                 'hero_check_log'     => __('Please check the security log.', 'metzler-webshield'),
@@ -159,7 +177,7 @@ class Metzler_Webshield_Admin {
         $data = json_decode( $body, true );
 
         if ( isset( $data['success'] ) && $data['success'] ) {
-            wp_send_json_success( array( 'message' => __( 'License key requested!', 'metzler-webshield' ) ) );
+            wp_send_json_success( array( 'message' => __( 'Key requested! Please check your inbox.', 'metzler-webshield' ) ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Error:', 'metzler-webshield' ) . ' ' . ( $data['message'] ?? __( 'Unknown', 'metzler-webshield' ) ) ) );
         }
@@ -201,15 +219,14 @@ class Metzler_Webshield_Admin {
 
             $telemetry_opt_in = sanitize_text_field(wp_unslash($_POST['telemetry'] ?? '0')) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.NonceVerification
             update_option( 'metzler_webshield_enable_telemetry', $telemetry_opt_in );
-            // Save token to file for high-speed WAF access without DB overhead
-            Metzler_Webshield_Storage::save_waf_key( $token );
+            do_action( 'metzler_webshield_license_verified', $token, $tier );
 
             wp_send_json_success( array(
                 'tier'    => $tier,
-                'message' => __( 'License verified successfully!', 'metzler-webshield' ),
+                'message' => __( 'Key verified. This site is now connected.', 'metzler-webshield' ),
             ) );
         } else {
-            wp_send_json_error( array( 'message' => __( 'Invalid license key.', 'metzler-webshield' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Invalid key.', 'metzler-webshield' ) ) );
         }
     }
 
@@ -245,12 +262,12 @@ class Metzler_Webshield_Admin {
 
             wp_send_json_success( array(
                 'tier'    => $tier,
-                'message' => __( 'License status updated.', 'metzler-webshield' ),
+                'message' => __( 'Connection status updated.', 'metzler-webshield' ),
             ) );
         } else {
             update_option( 'metzler_webshield_is_licensed', false );
             update_option( 'metzler_webshield_enable_telemetry', '0' );
-            wp_send_json_error( array( 'message' => __( 'License verification failed.', 'metzler-webshield' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Key verification failed.', 'metzler-webshield' ) ) );
         }
     }
 
@@ -265,11 +282,10 @@ class Metzler_Webshield_Admin {
         delete_option( 'metzler_webshield_license_tier' );
         delete_option( 'metzler_webshield_pro_expired' );
         
-        $upload_base = wp_upload_dir();
-        Metzler_Webshield_Storage::delete_waf_key();
-        @unlink($upload_base['basedir'] . '/metzler-webshield/waf-rules.enc'); // phpcs:ignore
+        Metzler_Webshield_Storage::delete_waf_key(); // legacy (<= 1.x)
+        do_action( 'metzler_webshield_license_removed' );
 
-        wp_send_json_success( array( 'message' => __( 'License removed.', 'metzler-webshield' ) ) );
+        wp_send_json_success( array( 'message' => __( 'Site disconnected.', 'metzler-webshield' ) ) );
     }
 
     /**
@@ -301,8 +317,7 @@ class Metzler_Webshield_Admin {
 
         $threats = Metzler_Webshield_Logger::get_active_threats( 5 );
         $threat_count = Metzler_Webshield_Logger::count_active_threats();
-        $is_licensed = get_option( 'metzler_webshield_is_licensed', false );
-        $is_pro = $is_licensed && ( 'pro' === get_option( 'metzler_webshield_license_tier', 'free' ) );
+        $ui_texts = self::ui_texts();
         $last_scan = get_option( 'metzler_webshield_last_scan' );
         $last_scan_text = $last_scan ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_scan ) ) : esc_html__( 'Never', 'metzler-webshield' );
         $settings_url = admin_url( 'admin.php?page=metzler-webshield' );
@@ -314,7 +329,10 @@ class Metzler_Webshield_Admin {
                     <span class="dashicons dashicons-warning" style="color: #d63638; font-size: 28px; width: 28px; height: 28px; margin-top: 2px;"></span>
                     <div>
                         <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #b32d2e;">
-                            <?php printf( esc_html( _n( '%d Security Risk Detected!', '%d Security Risks Detected!', $threat_count, 'metzler-webshield' ) ), $threat_count ); ?>
+                            <?php
+                            /* translators: %d: number of detected security risks */
+                            printf( esc_html( _n( '%d Security Risk Detected!', '%d Security Risks Detected!', $threat_count, 'metzler-webshield' ) ), (int) $threat_count );
+                            ?>
                         </h4>
                         <p style="margin: 0; color: #646970; font-size: 13px;">
                             <?php esc_html_e( 'The automated scanner detected suspicious or modified files on your server.', 'metzler-webshield' ); ?>
@@ -331,7 +349,10 @@ class Metzler_Webshield_Admin {
                         <?php endforeach; ?>
                         <?php if ( $threat_count > count( $threats ) ) : ?>
                             <li style="color: #646970; margin-top: 4px;">
-                                <em><?php printf( esc_html__( '+%d additional detected issues...', 'metzler-webshield' ), $threat_count - count( $threats ) ); ?></em>
+                                <em><?php
+                                /* translators: %d: number of further detected issues */
+                                printf( esc_html__( '+%d additional detected issues...', 'metzler-webshield' ), (int) ( $threat_count - count( $threats ) ) );
+                                ?></em>
                             </li>
                         <?php endif; ?>
                     </ul>
@@ -339,7 +360,10 @@ class Metzler_Webshield_Admin {
 
                 <div style="display: flex; justify-content: space-between; align-items: center; pt-2;">
                     <span style="font-size: 12px; color: #646970;">
-                        <?php printf( esc_html__( 'Last Scan: %s', 'metzler-webshield' ), esc_html( $last_scan_text ) ); ?>
+                        <?php
+                        /* translators: %s: date and time of the last scan */
+                        printf( esc_html__( 'Last Scan: %s', 'metzler-webshield' ), esc_html( $last_scan_text ) );
+                        ?>
                     </span>
                     <a href="<?php echo esc_url( $settings_url ); ?>" class="button button-primary button-small">
                         <?php esc_html_e( 'Review & Resolve in Webshield', 'metzler-webshield' ); ?> &rarr;
@@ -363,7 +387,7 @@ class Metzler_Webshield_Admin {
                 </div>
 
                 <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; padding: 8px 12px; background: #f6f7f7; border-radius: 4px; font-size: 12px; color: #50575e;">
-                    <span><strong><?php esc_html_e( 'Tier:', 'metzler-webshield' ); ?></strong> <?php echo $is_pro ? '<span style="color:#008a20; font-weight:600;">Pro Active</span>' : 'Community Free'; ?></span>
+                    <span><strong><?php esc_html_e( 'Tier:', 'metzler-webshield' ); ?></strong> <span style="<?php echo self::is_pro() ? 'color:#008a20; font-weight:600;' : ''; ?>"><?php echo esc_html( $ui_texts['tier_label'] ); ?></span></span>
                     <span><strong><?php esc_html_e( 'Last Scan:', 'metzler-webshield' ); ?></strong> <?php echo esc_html( $last_scan_text ); ?></span>
                 </div>
 
@@ -494,7 +518,10 @@ class Metzler_Webshield_Admin {
                 <span class="dashicons dashicons-warning" style="color: #d63638; font-size: 20px;"></span>
                 <strong style="color: #b32d2e;"><?php esc_html_e( 'Metzler Webshield Security Alert:', 'metzler-webshield' ); ?></strong>
                 <span>
-                    <?php printf( esc_html( _n( 'The automated scanner detected %d security threat on your website.', 'The automated scanner detected %d security threats on your website.', $threat_count, 'metzler-webshield' ) ), $threat_count ); ?>
+                    <?php
+                    /* translators: %d: number of detected security threats */
+                    printf( esc_html( _n( 'The automated scanner detected %d security threat on your website.', 'The automated scanner detected %d security threats on your website.', $threat_count, 'metzler-webshield' ) ), (int) $threat_count );
+                    ?>
                 </span>
                 <a href="<?php echo esc_url( $settings_url ); ?>" class="button button-small button-primary" style="margin-left: 6px;">
                     <?php esc_html_e( 'Review & Resolve', 'metzler-webshield' ); ?> &rarr;
@@ -524,6 +551,52 @@ class Metzler_Webshield_Admin {
 
         // Dismiss for 12 hours (cleared automatically when the next nightly scan runs)
         set_transient( 'mws_threat_notice_dismissed_' . get_current_user_id(), true, 12 * HOUR_IN_SECONDS );
+        wp_send_json_success();
+    }
+
+    /**
+     * Sites that held a Pro subscription in 1.x lost the Pro features with the split into Free + add-on.
+     */
+    public function render_pro_addon_notice(): void {
+        if ( ! current_user_can( 'install_plugins' ) ) {
+            return;
+        }
+        if ( apply_filters( 'metzler_webshield_pro_active', false ) ) {
+            return;
+        }
+        if ( ! get_option( 'metzler_webshield_is_licensed' ) || 'pro' !== get_option( 'metzler_webshield_license_tier', 'free' ) ) {
+            return;
+        }
+        if ( get_user_meta( get_current_user_id(), 'metzler_webshield_pro_notice_dismissed', true ) ) {
+            return;
+        }
+
+        $dismiss_nonce = wp_create_nonce( 'metzler_webshield_dismiss_notice' );
+        ?>
+        <div class="notice notice-info is-dismissible mws-pro-addon-notice" data-mws-nonce="<?php echo esc_attr( $dismiss_nonce ); ?>">
+            <p>
+                <strong><?php esc_html_e( 'Metzler Webshield Pro:', 'metzler-webshield' ); ?></strong>
+                <?php esc_html_e( 'Your Pro subscription is active. Pro features are now delivered as a separate add-on. Download it from your customer dashboard and install it to restore vulnerability intelligence and the Pro dashboard integration.', 'metzler-webshield' ); ?>
+                <a href="https://dash.metzler-webshield.de/dashboard#pro-addon" target="_blank" rel="noopener"><?php esc_html_e( 'Open customer dashboard', 'metzler-webshield' ); ?> &rarr;</a>
+            </p>
+        </div>
+        <script>
+            jQuery(document).on('click', '.mws-pro-addon-notice .notice-dismiss', function() {
+                jQuery.post(ajaxurl, {
+                    action: 'metzler_webshield_dismiss_pro_notice',
+                    nonce: jQuery('.mws-pro-addon-notice').data('mws-nonce')
+                });
+            });
+        </script>
+        <?php
+    }
+
+    public function ajax_dismiss_pro_notice(): void {
+        check_ajax_referer( 'metzler_webshield_dismiss_notice', 'nonce' );
+        if ( ! current_user_can( 'install_plugins' ) ) {
+            wp_die();
+        }
+        update_user_meta( get_current_user_id(), 'metzler_webshield_pro_notice_dismissed', 1 );
         wp_send_json_success();
     }
 }

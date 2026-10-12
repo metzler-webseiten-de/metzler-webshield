@@ -91,7 +91,7 @@ class Metzler_Webshield_Login {
                     sanitize_text_field($username)
                 ), 
                 "waf", 
-                "warning"
+                "success"
             );
 
             // Write brute force to telemetry file
@@ -103,7 +103,7 @@ class Metzler_Webshield_Login {
                 'severity' => 'high',
                 'request_uri' => isset($_SERVER['REQUEST_URI']) ? base64_encode(wp_unslash($_SERVER['REQUEST_URI'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
                 'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? base64_encode(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-                'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
+                'request_method' => sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? 'POST' ) ),
                 'payload' => base64_encode('Username: ' . sanitize_text_field($username)),
                 'encoding' => 'base64'
             );

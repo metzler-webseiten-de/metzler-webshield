@@ -86,7 +86,8 @@ jQuery(document).ready(function($) {
         }, function(response) {
             if (response.success && response.data.logs) {
                 renderLogs(response.data.logs);
-                const threats = response.data.logs.filter(l => l.severity === 'warning' || l.severity === 'error');
+                // Same rule as Metzler_Webshield_Logger::get_active_threats(): blocked attacks (waf) and system messages are no server threats
+                const threats = response.data.logs.filter(l => (l.severity === 'warning' || l.severity === 'error') && l.type !== 'waf' && l.type !== 'system');
                 
                 let lastScanStart = 0;
                 if (response.data.last_scan_start) {
@@ -123,7 +124,7 @@ jQuery(document).ready(function($) {
                     if (issuesFound > 0) {
                         setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_risks, metzler_webshield_ajax.i18n.hero_check_log);
                     } else {
-                        setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_guards_active : metzler_webshield_ajax.i18n.hero_local_desc));
+                        setHeroStatus('safe', metzler_webshield_ajax.i18n.hero_secure, metzler_webshield_ajax.i18n.hero_guards_active);
                     }
                 }
             }
@@ -181,7 +182,7 @@ jQuery(document).ready(function($) {
                 btn.replaceWith('<span style="color:#00a32a;">' + metzler_webshield_ajax.i18n.update_success + '</span>');
                 issuesFound = Math.max(0, issuesFound - 1);
                 if (issuesFound === 0) {
-                    setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_issues_fixed);
+                    setHeroStatus('safe', metzler_webshield_ajax.i18n.hero_secure, metzler_webshield_ajax.i18n.hero_issues_fixed);
                 }
             } else {
                 btn.text(metzler_webshield_ajax.i18n.update_error);
@@ -223,20 +224,9 @@ jQuery(document).ready(function($) {
 
     function updateScanStage(currentTask) {
         const stagesOrder = ['init', 'scan_updates', 'scan_plugins', 'scan_core', 'scan_files', 'scan_fim', 'scan_config'];
-        const isLicensed = metzler_webshield_ajax.is_licensed;
         
         if (currentTask === 'complete') {
             $('.scan-stage').show().removeClass('active').addClass('completed');
-            
-            if (!isLicensed) {
-                $('.scan-stage[data-stage="scan_plugins"], .scan-stage[data-stage="scan_core"]')
-                    .removeClass('completed active')
-                    .addClass('skipped')
-                    .find('.stage-text').html(function(_, oldHtml) {
-                        return oldHtml.indexOf('Skipped') === -1 ? oldHtml + ' <i>(Skipped - Free Cloud License required)</i>' : oldHtml;
-                    });
-            }
-            
             $('.scan-stage[data-stage="complete"]').show();
             return;
         }
@@ -244,14 +234,7 @@ jQuery(document).ready(function($) {
         let foundCurrent = false;
         stagesOrder.forEach(function(stage) {
             const el = $('.scan-stage[data-stage="' + stage + '"]');
-            
-            if (!isLicensed && (stage === 'scan_plugins' || stage === 'scan_core')) {
-                el.show().removeClass('active completed').addClass('skipped');
-                el.find('.stage-text').html(function(_, oldHtml) {
-                    return oldHtml.indexOf('Skipped') === -1 ? oldHtml + ' <i>(Skipped - Free Cloud License required)</i>' : oldHtml;
-                });
-                return;
-            }
+
 
             if (stage === currentTask) {
                 foundCurrent = true;
@@ -337,7 +320,7 @@ jQuery(document).ready(function($) {
                 if (issuesFound > 0) {
                     setHeroStatus('warning', metzler_webshield_ajax.i18n.hero_risks, metzler_webshield_ajax.i18n.hero_issues_found);
                 } else {
-                    setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_no_threats);
+                    setHeroStatus('safe', metzler_webshield_ajax.i18n.hero_secure, metzler_webshield_ajax.i18n.hero_no_threats);
                 }
             }, 1000);
         });
@@ -353,7 +336,7 @@ jQuery(document).ready(function($) {
             }, function(response) {
                 if(response.success) {
                     fetchLogs(function() {
-                        setHeroStatus('safe', (metzler_webshield_ajax.is_licensed ?  metzler_webshield_ajax.i18n.hero_secure : metzler_webshield_ajax.i18n.hero_local_secure), metzler_webshield_ajax.i18n.hero_log_cleared);
+                        setHeroStatus('safe', metzler_webshield_ajax.i18n.hero_secure, metzler_webshield_ajax.i18n.hero_log_cleared);
                         issuesFound = 0;
                     });
                 }

@@ -7,6 +7,7 @@ class Metzler_Webshield {
     
     private function load_dependencies(): void {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-storage.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-request.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/log/class-metzler-webshield-logger.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-queue.php';
         
@@ -390,28 +391,7 @@ class Metzler_Webshield {
     }
 
     public static function get_client_ip(): string {
-        $ip_keys = array(
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Standard proxies / load balancers
-            'HTTP_X_REAL_IP',        // Nginx / Caddy / Traefik
-            'REMOTE_ADDR'            // Direct connection fallback
-        );
-
-        foreach ( $ip_keys as $key ) {
-            if ( ! empty( $_SERVER[$key] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-                $raw_ip = wp_unslash( $_SERVER[$key] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-                if ( str_contains( $raw_ip, ',' ) ) {
-                    $ips = explode( ',', $raw_ip );
-                    $raw_ip = trim( $ips[0] );
-                }
-                $sanitized_ip = sanitize_text_field( trim( $raw_ip ) );
-                if ( filter_var( $sanitized_ip, FILTER_VALIDATE_IP ) ) {
-                    return $sanitized_ip;
-                }
-            }
-        }
-
-        return '127.0.0.1';
+        return Metzler_Webshield_Request::client_ip();
     }
 
     public function check_author_enumeration(): void {
@@ -422,6 +402,12 @@ class Metzler_Webshield {
         // Public front-end request without a form, so there is no nonce to verify
         if ( isset($_GET['author']) && is_numeric( sanitize_text_field( wp_unslash( $_GET['author'] ) ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $ip = self::get_client_ip();
+
+            // Search engines follow ?author= links like any other link
+            $user_agent = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            if ( Metzler_Webshield_Request::is_verified() && Metzler_Webshield_Rate_Limiter::is_verified_search_bot( $ip, $user_agent ) ) {
+                return;
+            }
             $transient_key = 'mws_ae_' . md5($ip);
             $count = (int) get_transient($transient_key);
             $count++;

@@ -14,6 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Loaded standalone by the legacy mu-plugin bootstrapper (beta versions), so pull in storage ourselves.
 require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
+require_once dirname( __DIR__ ) . '/class-metzler-webshield-request.php';
 
 class Metzler_Webshield_Rate_Limiter {
 
@@ -57,15 +58,11 @@ class Metzler_Webshield_Rate_Limiter {
             return;
         }
 
-        // 4. Resolve client IP (Cloudflare, proxy, or direct)
-        $client_ip = class_exists( 'Metzler_Webshield' )
-            ? Metzler_Webshield::get_client_ip()
-            : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: '127.0.0.1' );
+        // 4. Resolve client IP (proxy headers only count when they come from a trusted proxy)
+        $client_ip = Metzler_Webshield_Request::client_ip();
 
         // 5. Skip loopback / server requests
-        $server_ip = $_SERVER['SERVER_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-        $host_ip   = isset( $_SERVER['HTTP_HOST'] ) ? gethostbyname( sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) ) : '';
-        if ( $client_ip === $server_ip || $client_ip === $host_ip || $client_ip === '127.0.0.1' || $client_ip === '::1' ) {
+        if ( Metzler_Webshield_Request::is_own_server_request() ) {
             return;
         }
 
@@ -103,7 +100,7 @@ class Metzler_Webshield_Rate_Limiter {
 
         // 9. Skip verified search engine crawlers (Googlebot, Bingbot)
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-        if ( self::is_verified_search_bot( $client_ip, $user_agent ) ) {
+        if ( Metzler_Webshield_Request::is_verified() && self::is_verified_search_bot( $client_ip, $user_agent ) ) {
             return;
         }
 
@@ -148,35 +145,92 @@ class Metzler_Webshield_Rate_Limiter {
     }
 
     /**
-     * Verifies genuine search engine crawlers via reverse DNS and caches the verdict for 24 hours.
+     * Crawler User-Agents per search engine. Google runs many crawlers besides "Googlebot" (AdsBot-Google,
+     * Mediapartners-Google, Storebot-Google, GoogleOther, Google-InspectionTool, ...), so every User-Agent
+     * mentioning Google is checked; the DNS verification below decides.
+     */
+    const SEARCH_BOT_AGENTS = array(
+        'google' => '/google/i',
+        'bing'   => '/bingbot|msnbot|adidxbot|bingpreview/i',
+        'baidu'  => '/baiduspider/i',
+        'yandex' => '/yandex/i',
+    );
+
+    /**
+     * Hostname suffixes the search engines publish for reverse DNS verification of their crawlers.
+     * Not *.googleusercontent.com: every Google Cloud customer VM resolves there, so it proves nothing.
+     * DuckDuckBot is not listed: DuckDuckGo publishes IP lists instead of crawler hostnames.
+     */
+    const SEARCH_BOT_DOMAINS = array(
+        'google' => array( '.googlebot.com', '.google.com' ),
+        'bing'   => array( '.search.msn.com' ),
+        'baidu'  => array( '.baidu.com', '.baidu.jp' ),
+        'yandex' => array( '.yandex.ru', '.yandex.net', '.yandex.com' ),
+    );
+
+    /**
+     * True when the User-Agent claims to be a search engine crawler (unverified, for cheap heuristics only).
+     */
+    public static function claims_search_bot( string $user_agent ): ?string {
+        foreach ( self::SEARCH_BOT_AGENTS as $engine => $pattern ) {
+            if ( preg_match( $pattern, $user_agent ) ) {
+                return $engine;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Verifies genuine search engine crawlers. A positive verdict is cached for 24 hours, a negative one
+     * for an hour only, so a DNS hiccup can't lock a real crawler out for a whole day.
+     *
+     * A User-Agent alone proves nothing. The IP must resolve (reverse DNS) to a hostname of the search engine,
+     * and that hostname must resolve back to the same IP, because anyone can set a reverse DNS entry for their
+     * own IP but not an A/AAAA record under googlebot.com.
      */
     public static function is_verified_search_bot( string $ip, string $user_agent ): bool {
-        if ( ! preg_match( '/(Googlebot|bingbot|Baiduspider|YandexBot|DuckDuckBot)/i', $user_agent, $matches ) ) {
+        $engine = self::claims_search_bot( $user_agent );
+        if ( null === $engine || ! filter_var( $ip, FILTER_VALIDATE_IP ) ) {
             return false;
         }
 
-        $transient_key = 'mws_bot_' . md5( $ip );
+        $transient_key = 'mws_bot_' . md5( $engine . $ip );
         $cached        = get_transient( $transient_key );
         if ( false !== $cached ) {
             return ( '1' === $cached );
         }
 
-        $hostname = gethostbyaddr( $ip );
         $is_valid = false;
+        $hostname = strtolower( rtrim( (string) gethostbyaddr( $ip ), '.' ) );
 
-        if ( $hostname && $hostname !== $ip ) {
-            $bot = strtolower( $matches[1] );
-            if ( 'googlebot' === $bot && ( str_ends_with( $hostname, '.googlebot.com' ) || str_ends_with( $hostname, '.google.com' ) ) ) {
-                $is_valid = ( gethostbyname( $hostname ) === $ip );
-            } elseif ( 'bingbot' === $bot && str_ends_with( $hostname, '.search.msn.com' ) ) {
-                $is_valid = ( gethostbyname( $hostname ) === $ip );
-            } elseif ( in_array( $bot, array( 'baiduspider', 'yandexbot', 'duckduckbot' ), true ) ) {
-                $is_valid = ( gethostbyname( $hostname ) === $ip );
+        if ( '' !== $hostname && $hostname !== $ip ) {
+            foreach ( self::SEARCH_BOT_DOMAINS[ $engine ] as $suffix ) {
+                if ( str_ends_with( $hostname, $suffix ) ) {
+                    $is_valid = self::hostname_resolves_to( $hostname, $ip );
+                    break;
+                }
             }
         }
 
-        set_transient( $transient_key, $is_valid ? '1' : '0', DAY_IN_SECONDS );
+        set_transient( $transient_key, $is_valid ? '1' : '0', $is_valid ? DAY_IN_SECONDS : HOUR_IN_SECONDS );
         return $is_valid;
+    }
+
+    /**
+     * Forward-confirms a reverse DNS hostname, for IPv4 and IPv6 crawlers alike.
+     */
+    private static function hostname_resolves_to( string $hostname, string $ip ): bool {
+        if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+            return in_array( $ip, gethostbynamel( $hostname ) ?: array(), true );
+        }
+
+        $records = @dns_get_record( $hostname, DNS_AAAA ) ?: array(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- DNS failures mean "not verified"
+        foreach ( $records as $record ) {
+            if ( isset( $record['ipv6'] ) && inet_pton( $record['ipv6'] ) === inet_pton( $ip ) ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

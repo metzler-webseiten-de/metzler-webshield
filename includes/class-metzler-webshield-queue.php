@@ -40,8 +40,6 @@ class Metzler_Webshield_Queue {
         check_ajax_referer( 'metzler_webshield_nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         
-        $is_licensed = get_option( 'metzler_webshield_is_licensed' );
-        
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         $wpdb->query("TRUNCATE TABLE $table_name"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
@@ -52,39 +50,7 @@ class Metzler_Webshield_Queue {
 
         Metzler_Webshield_Logger::log( __("System scan initialized. Checking files and updates...", "metzler-webshield"), "system" );
 
-        $tasks = array();
-        
-        if ( get_option('metzler_webshield_enable_updates', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_updates', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        // Cloud-only scanners
-        if ( $is_licensed ) {
-            if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
-                $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
-            }
-            if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
-                $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
-            }
-        }
-        
-        if ( get_option('metzler_webshield_enable_files', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_files', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        if ( get_option('metzler_webshield_enable_fim', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_fim', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        $tasks[] = array('type' => 'scan_config', 'payload' => json_encode(array('step' => 'init')));
-
-        foreach ($tasks as $task) {
-            $wpdb->insert($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-                'task_type' => $task['type'],
-                'payload' => $task['payload'],
-                'status' => 'pending'
-            ));
-        }
+        self::enqueue_tasks();
 
         wp_send_json_success(array('message' => __('Scan queued', 'metzler-webshield')));
     }
@@ -104,33 +70,7 @@ class Metzler_Webshield_Queue {
             wp_send_json_success(array('status' => 'complete', 'message' => __('Scan completed', 'metzler-webshield')));
         }
 
-        $result = array('status' => 'success');
-        switch ( $task->task_type ) {
-            case 'scan_updates':
-                $scanner = new Metzler_Webshield_Scanner_Updates();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-            case 'scan_core':
-                $scanner = new Metzler_Webshield_Scanner_Core();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-            case 'scan_plugins':
-                $scanner = new Metzler_Webshield_Scanner_Plugins();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-            case 'scan_files':
-                $scanner = new Metzler_Webshield_Scanner_Files();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-            case 'scan_fim':
-                $scanner = new Metzler_Webshield_Scanner_FIM();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-            case 'scan_config':
-                $scanner = new Metzler_Webshield_Scanner_Config();
-                $result = $scanner->run_step( json_decode($task->payload, true) );
-                break;
-        }
+        $result = self::run_task( $task );
 
         if ( isset($result['complete']) && $result['complete'] ) {
             $wpdb->update($table_name, array('status' => 'completed'), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
@@ -329,7 +269,7 @@ class Metzler_Webshield_Queue {
         $disable_xmlrpc = isset($_POST['disable_xmlrpc']) ? sanitize_text_field($_POST['disable_xmlrpc']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $enable_ratelimit = isset($_POST['enable_ratelimit']) ? sanitize_text_field($_POST['enable_ratelimit']) : '1'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $under_attack_mode = isset($_POST['under_attack_mode']) ? sanitize_text_field($_POST['under_attack_mode']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-        $enable_telemetry = isset($_POST['enable_telemetry']) ? sanitize_text_field($_POST['enable_telemetry']) : '1'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
+        $enable_telemetry = isset($_POST['enable_telemetry']) && sanitize_text_field($_POST['enable_telemetry']) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         
         update_option('metzler_webshield_enable_fim', $enable_fim);
         update_option('metzler_webshield_enable_core', $enable_core);
@@ -347,9 +287,62 @@ class Metzler_Webshield_Queue {
         wp_send_json_success();
     }
     
-    public static function cron_start_scan(): void {
-        $is_licensed = get_option( 'metzler_webshield_is_licensed' );
+    /**
+     * Queues all enabled scan tasks. Add-ons can append their own task types via the
+     * metzler_webshield_scan_tasks filter and execute them via metzler_webshield_run_scan_task.
+     */
+    private static function enqueue_tasks(): void {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
 
+        $types = array();
+        $toggles = array(
+            'scan_updates' => 'metzler_webshield_enable_updates',
+            'scan_plugins' => 'metzler_webshield_enable_plugins',
+            'scan_core'    => 'metzler_webshield_enable_core',
+            'scan_files'   => 'metzler_webshield_enable_files',
+            'scan_fim'     => 'metzler_webshield_enable_fim',
+        );
+        foreach ( $toggles as $type => $option ) {
+            if ( get_option( $option, '1' ) === '1' ) {
+                $types[] = $type;
+            }
+        }
+        $types[] = 'scan_config';
+
+        $types = (array) apply_filters( 'metzler_webshield_scan_tasks', $types );
+
+        foreach ( $types as $type ) {
+            $wpdb->insert($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+                'task_type' => sanitize_key( $type ),
+                'payload' => wp_json_encode(array('step' => 'init')),
+                'status' => 'pending'
+            ));
+        }
+    }
+
+    private static function run_task( $task ): array {
+        $scanners = array(
+            'scan_updates' => 'Metzler_Webshield_Scanner_Updates',
+            'scan_core'    => 'Metzler_Webshield_Scanner_Core',
+            'scan_plugins' => 'Metzler_Webshield_Scanner_Plugins',
+            'scan_files'   => 'Metzler_Webshield_Scanner_Files',
+            'scan_fim'     => 'Metzler_Webshield_Scanner_FIM',
+            'scan_config'  => 'Metzler_Webshield_Scanner_Config',
+        );
+        $payload = json_decode( $task->payload, true );
+
+        if ( isset( $scanners[ $task->task_type ] ) ) {
+            $scanner = new $scanners[ $task->task_type ]();
+            return $scanner->run_step( $payload );
+        }
+
+        // Unknown task types are handled by add-ons; without a handler the task is finished.
+        $result = apply_filters( 'metzler_webshield_run_scan_task', null, $task->task_type, $payload );
+        return is_array( $result ) ? $result : array( 'complete' => true );
+    }
+
+    public static function cron_start_scan(): void {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         $wpdb->query("TRUNCATE TABLE $table_name"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
@@ -362,39 +355,7 @@ class Metzler_Webshield_Queue {
 
         Metzler_Webshield_Logger::log(__("Automatic background scan (cron) started...", "metzler-webshield"), "system" );
 
-        $tasks = array();
-        
-        if ( get_option('metzler_webshield_enable_updates', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_updates', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        if ( $is_licensed ) {
-            if ( get_option('metzler_webshield_enable_plugins', '1') === '1' ) {
-                $tasks[] = array('type' => 'scan_plugins', 'payload' => json_encode(array('step' => 'init')));
-            }
-            if ( get_option('metzler_webshield_enable_core', '1') === '1' ) {
-                $tasks[] = array('type' => 'scan_core', 'payload' => json_encode(array('step' => 'init')));
-            }
-        }
-        
-        if ( get_option('metzler_webshield_enable_files', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_files', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        if ( get_option('metzler_webshield_enable_fim', '1') === '1' ) {
-            $tasks[] = array('type' => 'scan_fim', 'payload' => json_encode(array('step' => 'init')));
-        }
-        
-        $tasks[] = array('type' => 'scan_config', 'payload' => json_encode(array('step' => 'init')));
-
-        foreach ($tasks as $task) {
-            $wpdb->insert($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-                'task_type' => $task['type'],
-                'payload' => $task['payload'],
-                'status' => 'pending',
-                'created_at' => current_time('mysql')
-            ));
-        }
+        self::enqueue_tasks();
         
         self::cron_process_queue();
     }
@@ -425,33 +386,7 @@ class Metzler_Webshield_Queue {
                 break;
             }
             
-            $result = array();
-            switch ($task->task_type) {
-                case 'scan_updates':
-                    $scanner = new Metzler_Webshield_Scanner_Updates();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-                case 'scan_core':
-                    $scanner = new Metzler_Webshield_Scanner_Core();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-                case 'scan_plugins':
-                    $scanner = new Metzler_Webshield_Scanner_Plugins();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-                case 'scan_files':
-                    $scanner = new Metzler_Webshield_Scanner_Files();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-                case 'scan_fim':
-                    $scanner = new Metzler_Webshield_Scanner_FIM();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-                case 'scan_config':
-                    $scanner = new Metzler_Webshield_Scanner_Config();
-                    $result = $scanner->run_step( json_decode($task->payload, true) );
-                    break;
-            }
+            $result = self::run_task( $task );
 
             if ( isset($result['complete']) && $result['complete'] ) {
                 $wpdb->update($table_name, array('status' => 'completed'), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery

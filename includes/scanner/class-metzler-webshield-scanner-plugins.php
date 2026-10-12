@@ -1,4 +1,5 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit;
 class Metzler_Webshield_Scanner_Plugins {
     
     public function run_step($payload): array {
@@ -46,13 +47,8 @@ class Metzler_Webshield_Scanner_Plugins {
                 
                 if ( $slug === '.' ) continue;
                 
-                $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
-                $token = get_option( 'metzler_webshield_license_token' );
-                $response = wp_remote_get( $api_url . "/scanner/threat-intel/plugin/{$slug}/{$version}", array(
+                $response = wp_remote_get( 'https://downloads.wordpress.org/plugin-checksums/' . rawurlencode( $slug ) . '/' . rawurlencode( $version ) . '.json', array(
                     'timeout' => 15,
-                    'headers' => array(
-                        'Authorization' => 'Bearer ' . $token,
-                    )
                 ) );
                 
                 if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
@@ -61,28 +57,7 @@ class Metzler_Webshield_Scanner_Plugins {
                     continue;
                 }
                 
-                $body = wp_remote_retrieve_body( $response );
-                $data = json_decode( $body, true );
-                
-                // 1. Process Threat Intelligence (Vulnerabilities)
-                if ( !empty($data['vulnerabilities']) && is_array($data['vulnerabilities']) ) {
-                    foreach ( $data['vulnerabilities'] as $vuln ) {
-                        $title = isset($vuln['title']) ? $vuln['title'] : __('Unknown vulnerability', 'metzler-webshield');
-                        Metzler_Webshield_Logger::log(
-                            sprintf(
-                                /* translators: 1: Plugin name, 2: Vulnerability title */
-                                __('CRITICAL: Known vulnerability found in plugin %1$s: %2$s', 'metzler-webshield'),
-                                $name,
-                                $title
-                            ), 
-                            "plugins", 
-                            "critical" 
-                        );
-                    }
-                }
-                
-                // 2. Extract checksums from Threat Intel wrapper
-                $checksums_data = isset($data['checksums']) ? $data['checksums'] : $data;
+                $checksums_data = json_decode( wp_remote_retrieve_body( $response ), true );
                 
                 if ( isset($checksums_data['files']) && is_array($checksums_data['files']) ) {
                     $plugin_dir = WP_PLUGIN_DIR . '/' . $slug;

@@ -82,6 +82,7 @@ No. Since Metzler Webshield runs early, it typically blocks bad requests before 
 * Changed: Prepared for distribution through WordPress.org.
 * Privacy: Telemetry is off by default; cookies and authorization headers are never included.
 * Fixed: Blocked brute-force and user-enumeration attempts no longer appear as active threats on the dashboard.
+* Fixed: The "Blocked Bots (24h)" widget shows IP address and attack type for brute-force and user-enumeration blocks, also on translated sites.
 * Fixed: The "File Dropper" heuristic no longer matches file writes and unrelated base64_decode() calls across separate statements (false positives).
 
 = 1.0.2 =

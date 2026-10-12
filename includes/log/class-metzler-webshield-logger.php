@@ -134,25 +134,14 @@ class Metzler_Webshield_Logger {
         $recent_events = array();
 
         foreach ( $rows as $row ) {
-            $count = 1;
-            if ( preg_match( '/(?:WAF Block:\s*(\d+)\s*attack)/i', $row->message, $m ) ) {
-                $count = (int) $m[1];
-            }
+            $event = self::parse_waf_event( (string) $row->message );
+            $count = $event['count'];
+            $types = $event['types'];
+            $ip    = $event['ip'];
+
             $total_attacks += $count;
-
-            // Extract categories inside parentheses e.g. (Bad_Bots, Browser_Integrity)
-            $types = array();
-            if ( preg_match( '/\(([^)]+)\)\s*prevented/i', $row->message, $m ) ) {
-                $types = array_map( 'trim', explode( ',', $m[1] ) );
-                foreach ( $types as $cat ) {
-                    $categories[ $cat ] = ( $categories[ $cat ] ?? 0 ) + $count;
-                }
-            }
-
-            // Extract IP
-            $ip = '';
-            if ( preg_match( '/from IP\s*([^\s(]+)/i', $row->message, $m ) ) {
-                $ip = trim( $m[1] );
+            foreach ( $types as $cat ) {
+                $categories[ $cat ] = ( $categories[ $cat ] ?? 0 ) + $count;
             }
 
             if ( count( $recent_events ) < 5 ) {
@@ -173,5 +162,102 @@ class Metzler_Webshield_Logger {
             'categories'    => $categories,
             'recent_events' => $recent_events,
         );
+    }
+
+    /**
+     * Reads count, IP and attack types from a logged WAF message.
+     *
+     * The patterns are built from the same format strings the plugin logs with, in English and in the
+     * site language, so translated log lines are understood too. Unknown lines fall back to the first
+     * IP address found in the text.
+     *
+     * @return array{count: int, ip: string, types: string[]}
+     */
+    private static function parse_waf_event( string $message ): array {
+        $events = array(
+            array(
+                'formats' => array(
+                    'WAF Block: 1 attack from IP %1$s (%2$s) prevented.',
+                    /* translators: 1: IP address, 2: attack types */
+                    __( 'WAF Block: 1 attack from IP %1$s (%2$s) prevented.', 'metzler-webshield' ),
+                ),
+                'ip'      => 1,
+                'types'   => 2,
+            ),
+            array(
+                'formats' => array(
+                    'WAF Block: %1$d attacks from IP %2$s (%3$s) prevented.',
+                    /* translators: 1: number of attacks, 2: IP address, 3: attack types */
+                    __( 'WAF Block: %1$d attacks from IP %2$s (%3$s) prevented.', 'metzler-webshield' ),
+                ),
+                'count'   => 1,
+                'ip'      => 2,
+                'types'   => 3,
+            ),
+            array(
+                'formats' => array(
+                    'Brute-Force prevented: Bot login attempt (No JS) from IP: %1$s for user: %2$s',
+                    /* translators: %1$s: IP address, %2$s: username */
+                    __( 'Brute-Force prevented: Bot login attempt (No JS) from IP: %1$s for user: %2$s', 'metzler-webshield' ),
+                ),
+                'ip'      => 1,
+                'type'    => 'Brute_Force',
+            ),
+            array(
+                'formats' => array(
+                    'User Enumeration blocked: %1$s exceeded rate limit with %2$d author probes in 60s',
+                    /* translators: 1: IP address, 2: Probe count */
+                    __( 'User Enumeration blocked: %1$s exceeded rate limit with %2$d author probes in 60s', 'metzler-webshield' ),
+                ),
+                'ip'      => 1,
+                'type'    => 'User_Enumeration',
+            ),
+        );
+
+        foreach ( $events as $event ) {
+            foreach ( array_unique( $event['formats'] ) as $format ) {
+                if ( ! preg_match( self::format_to_regex( $format ), $message, $m ) ) {
+                    continue;
+                }
+
+                $types = isset( $event['types'] )
+                    ? array_values( array_filter( array_map( 'trim', explode( ',', $m[ 'p' . $event['types'] ] ) ) ) )
+                    : array( $event['type'] );
+
+                return array(
+                    'count' => isset( $event['count'] ) ? max( 1, (int) $m[ 'p' . $event['count'] ] ) : 1,
+                    'ip'    => trim( $m[ 'p' . $event['ip'] ] ),
+                    'types' => $types,
+                );
+            }
+        }
+
+        $ip = '';
+        foreach ( preg_split( '/\s+/', $message ) as $token ) {
+            $token = trim( $token, '()[],;' );
+            if ( filter_var( $token, FILTER_VALIDATE_IP ) ) {
+                $ip = $token;
+                break;
+            }
+        }
+
+        return array( 'count' => 1, 'ip' => $ip, 'types' => array() );
+    }
+
+    /**
+     * Turns a sprintf format with numbered placeholders (%1$s, %2$d) into a regex with named groups p1, p2, ...
+     */
+    private static function format_to_regex( string $format ): string {
+        $parts = preg_split( '/%(\d+)\$([sd])/', $format, -1, PREG_SPLIT_DELIM_CAPTURE );
+        $regex = '';
+
+        for ( $i = 0, $n = count( $parts ); $i < $n; $i += 3 ) {
+            $regex .= preg_quote( $parts[ $i ], '/' );
+            if ( isset( $parts[ $i + 2 ] ) ) {
+                $regex .= 'd' === $parts[ $i + 2 ] ? '(?P<p' . $parts[ $i + 1 ] . '>\d+)' : '(?P<p' . $parts[ $i + 1 ] . '>.+?)';
+            }
+        }
+
+        return '/^' . $regex . '$/su';
     }
 }

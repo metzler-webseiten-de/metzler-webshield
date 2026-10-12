@@ -1,70 +1,94 @@
-<?php // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// If uninstall not called from WordPress, then exit. // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-if ( ! defined( "WP_UNINSTALL_PLUGIN" ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    exit; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-} // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// 1. Drop Custom Tables // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-global $wpdb; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$tables = array( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $wpdb->prefix . "metzler_webshield_logs", // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
-    $wpdb->prefix . "metzler_webshield_queue", // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
-    $wpdb->prefix . "metzler_webshield_fim", // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
-    $wpdb->prefix . "metzler_webshield_quarantine" // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals
-); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-foreach ( $tables as $table ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.NamingConventions.PrefixAllGlobals, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange
-} // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// 2. Delete Plugin Options // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$options = array( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_db_version", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_is_licensed", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_license_token", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_verified_email", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_enable_waf", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_enable_fim", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_disable_xmlrpc", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_enable_rate_limiting", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_under_attack_mode", // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    "metzler_webshield_enable_telemetry" // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-foreach ( $options as $option ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    delete_option( $option ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-} // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// 3. Remove MU-Plugin (WAF) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$mu_dir = defined("WPMU_PLUGIN_DIR") ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . "/mu-plugins"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$mu_file = $mu_dir . "/metzler-webshield-waf-boot.php"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-if ( file_exists( $mu_file ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    @wp_delete_file( $mu_file ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-} // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// 4. Remove Uploads Directory (Quarantine & Telemetry JSONL) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$upload_base = wp_upload_dir(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-$upload_dir = $upload_base['basedir'] . "/metzler-webshield"; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-if ( is_dir( $upload_dir ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    $iterator = new RecursiveIteratorIterator( // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-        new RecursiveDirectoryIterator( $upload_dir, FilesystemIterator::SKIP_DOTS ),
-        RecursiveIteratorIterator::CHILD_FIRST
-    ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    foreach ( $iterator as $path ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-        if ( $path->isDir() ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-            @rmdir( $path->getPathname() ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
-        } else { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-            @wp_delete_file( $path->getPathname() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-        } // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    } // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-    @rmdir( $upload_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
-} // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-// 5. Clear Scheduled Crons // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-wp_clear_scheduled_hook( "metzler_webshield_daily_scan" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-wp_clear_scheduled_hook( "metzler_webshield_hourly_license_check" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-wp_clear_scheduled_hook( "metzler_webshield_five_minute_telemetry" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
-wp_clear_scheduled_hook( "metzler_webshield_sync_waf_rules" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
- // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals
+<?php
+/**
+ * Removes all data of Metzler Webshield.
+ *
+ * @package Metzler_Webshield
+ */
+
+// If uninstall not called from WordPress, then exit.
+if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
+	exit;
+}
+
+global $wpdb;
+
+// 1. Drop custom tables
+$metzler_webshield_tables = array(
+	$wpdb->prefix . 'metzler_webshield_logs',
+	$wpdb->prefix . 'metzler_webshield_queue',
+	$wpdb->prefix . 'metzler_webshield_fim',
+	$wpdb->prefix . 'metzler_webshield_quarantine',
+);
+
+foreach ( $metzler_webshield_tables as $metzler_webshield_table ) {
+	$wpdb->query( "DROP TABLE IF EXISTS {$metzler_webshield_table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+}
+
+// 2. Delete plugin options
+$metzler_webshield_options = array(
+	'metzler_webshield_version',
+	'metzler_webshield_db_version',
+	'metzler_webshield_is_licensed',
+	'metzler_webshield_license_token',
+	'metzler_webshield_license_tier',
+	'metzler_webshield_pro_expired',
+	'metzler_webshield_verified_email',
+	'metzler_webshield_enable_waf',
+	'metzler_webshield_enable_fim',
+	'metzler_webshield_enable_core',
+	'metzler_webshield_enable_files',
+	'metzler_webshield_enable_updates',
+	'metzler_webshield_enable_plugins',
+	'metzler_webshield_disable_xmlrpc',
+	'metzler_webshield_enable_rate_limiting',
+	'metzler_webshield_under_attack_mode',
+	'metzler_webshield_enable_telemetry',
+	'metzler_webshield_historical_telemetry_sent',
+	'metzler_webshield_fim_last_baseline',
+	'metzler_webshield_last_scan',
+	'metzler_webshield_last_scan_start',
+	'metzler_webshield_whitelist',
+	'metzler_webshield_rules_synced',
+);
+
+foreach ( $metzler_webshield_options as $metzler_webshield_option ) {
+	delete_option( $metzler_webshield_option );
+}
+
+delete_transient( 'metzler_webshield_core_checksums' );
+delete_transient( 'metzler_webshield_global_stats' );
+delete_transient( 'mws_remote_update_info' );
+delete_metadata( 'user', 0, 'metzler_webshield_pro_notice_dismissed', '', true );
+
+// 3. Remove legacy MU-plugin (WAF bootstrapper of beta versions)
+$metzler_webshield_mu_dir  = defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins';
+$metzler_webshield_mu_file = $metzler_webshield_mu_dir . '/metzler-webshield-waf-boot.php';
+
+if ( file_exists( $metzler_webshield_mu_file ) ) {
+	wp_delete_file( $metzler_webshield_mu_file );
+}
+
+// 4. Remove uploads directory (quarantine, telemetry buffer, rate-limit buckets)
+$metzler_webshield_upload_base = wp_upload_dir();
+$metzler_webshield_upload_dir  = $metzler_webshield_upload_base['basedir'] . '/metzler-webshield';
+
+if ( is_dir( $metzler_webshield_upload_dir ) ) {
+	$metzler_webshield_iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator( $metzler_webshield_upload_dir, FilesystemIterator::SKIP_DOTS ),
+		RecursiveIteratorIterator::CHILD_FIRST
+	);
+	foreach ( $metzler_webshield_iterator as $metzler_webshield_path ) {
+		if ( $metzler_webshield_path->isDir() ) {
+			@rmdir( $metzler_webshield_path->getPathname() ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir, WordPress.PHP.NoSilencedErrors.Discouraged
+		} else {
+			wp_delete_file( $metzler_webshield_path->getPathname() );
+		}
+	}
+	@rmdir( $metzler_webshield_upload_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir, WordPress.PHP.NoSilencedErrors.Discouraged
+}
+
+// 5. Clear scheduled crons
+wp_clear_scheduled_hook( 'metzler_webshield_daily_scan' );
+wp_clear_scheduled_hook( 'metzler_webshield_hourly_license_check' );
+wp_clear_scheduled_hook( 'metzler_webshield_five_minute_telemetry' );
+wp_clear_scheduled_hook( 'metzler_webshield_sync_waf_rules' );

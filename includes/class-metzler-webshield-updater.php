@@ -1,9 +1,8 @@
 <?php
 /**
- * Self-Hosted Updater for Metzler Webshield
+ * Self-hosted updater for Metzler Webshield builds distributed outside WordPress.org.
  *
- * Intercepts WordPress core update checks and plugin details requests
- * to deliver updates from the Metzler Webshield API.
+ * Only part of the "selfhosted" build (bin/build.sh); the WordPress.org build ships without this file.
  *
  * @package Metzler_Webshield
  */
@@ -37,13 +36,14 @@ class Metzler_Webshield_Updater {
 	/**
 	 * Cache key for the remote update info transient
 	 */
-	private const TRANSIENT_KEY = 'mws_remote_update_info';
+	private string $transient_key;
 
-	public function __construct( string $plugin_file, string $version, string $api_url ) {
-		$this->plugin_file = plugin_basename( $plugin_file );
-		$this->plugin_slug = dirname( $this->plugin_file );
-		$this->version     = $version;
-		$this->api_url     = trailingslashit( $api_url );
+	public function __construct( string $plugin_file, string $version, string $api_url, string $transient_key ) {
+		$this->plugin_file   = plugin_basename( $plugin_file );
+		$this->plugin_slug   = dirname( $this->plugin_file );
+		$this->version       = $version;
+		$this->api_url       = trailingslashit( $api_url );
+		$this->transient_key = $transient_key;
 	}
 
 	public function init(): void {
@@ -198,7 +198,7 @@ class Metzler_Webshield_Updater {
 		$is_enabled   = in_array( $this->plugin_file, $auto_updates, true );
 
 		$action = $is_enabled ? 'disable' : 'enable';
-		$text   = $is_enabled ? __( 'Disable auto-updates' ) : __( 'Enable auto-updates' );
+		$text   = $is_enabled ? __( 'Disable auto-updates', 'metzler-webshield' ) : __( 'Enable auto-updates', 'metzler-webshield' );
 
 		$url = add_query_arg(
 			array(
@@ -300,8 +300,15 @@ class Metzler_Webshield_Updater {
 	 */
 	public function clear_cache( $upgrader_object = null, $options = array() ): void {
 		if ( isset( $options['action'], $options['type'] ) && 'update' === $options['action'] && 'plugin' === $options['type'] ) {
-			delete_transient( self::TRANSIENT_KEY );
+			$this->flush();
 		}
+	}
+
+	/**
+	 * Forget the cached release info, e.g. after the license changed.
+	 */
+	public function flush(): void {
+		delete_transient( $this->transient_key );
 	}
 
 	/**
@@ -313,7 +320,7 @@ class Metzler_Webshield_Updater {
 		$force_check = isset( $_GET['force-check'] ) && ! empty( $_GET['force-check'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		if ( ! $force_check ) {
-			$cached = get_transient( self::TRANSIENT_KEY );
+			$cached = get_transient( $this->transient_key );
 			if ( false !== $cached && is_object( $cached ) ) {
 				// If we previously cached a network/Cloudflare failure, stay in backoff
 				if ( ! empty( $cached->error ) ) {
@@ -336,6 +343,7 @@ class Metzler_Webshield_Updater {
 				),
 				'body'    => wp_json_encode(
 					array(
+						'slug'    => $this->plugin_slug,
 						'version' => $this->version,
 						'domain'  => $domain,
 						'token'   => $token,
@@ -348,20 +356,20 @@ class Metzler_Webshield_Updater {
 		// with randomized jitter (2 to 3 hours) to prevent thundering herd / retry storms.
 		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
 			$backoff = ( 2 * HOUR_IN_SECONDS ) + wp_rand( 0, 3600 );
-			set_transient( self::TRANSIENT_KEY, (object) array( 'error' => true, 'timestamp' => time() ), $backoff );
+			set_transient( $this->transient_key, (object) array( 'error' => true, 'timestamp' => time() ), $backoff );
 			return false;
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ) );
 		if ( empty( $body ) || ! isset( $body->version ) ) {
 			$backoff = ( 2 * HOUR_IN_SECONDS ) + wp_rand( 0, 3600 );
-			set_transient( self::TRANSIENT_KEY, (object) array( 'error' => true, 'timestamp' => time() ), $backoff );
+			set_transient( $this->transient_key, (object) array( 'error' => true, 'timestamp' => time() ), $backoff );
 			return false;
 		}
 
 		// Cache successful response for 6-8 hours with random jitter to distribute server load
 		$ttl = ( 6 * HOUR_IN_SECONDS ) + wp_rand( 0, 7200 );
-		set_transient( self::TRANSIENT_KEY, $body, $ttl );
+		set_transient( $this->transient_key, $body, $ttl );
 
 		return $body;
 	}

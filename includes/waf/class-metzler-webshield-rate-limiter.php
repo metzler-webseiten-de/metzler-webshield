@@ -80,7 +80,7 @@ class Metzler_Webshield_Rate_Limiter {
         }
 
         // 8. Handle 1-Click Human Verification POST submission
-        if ( isset( $_POST['mws_clearance_token'] ) && 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+        if ( isset( $_POST['mws_clearance_token'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- the clearance token carries its own HMAC
             if ( self::verify_clearance_token( sanitize_text_field( wp_unslash( $_POST['mws_clearance_token'] ) ), $client_ip ) ) { // phpcs:ignore WordPress.Security.NonceVerification
                 self::set_clearance_cookie( $client_ip );
                 // Clean up IP rate limit file so user can immediately browse
@@ -239,7 +239,7 @@ class Metzler_Webshield_Rate_Limiter {
         Metzler_Webshield_Storage::write_guarded( $file, json_encode( $data ) );
 
         // 5. Periodic garbage collection (1 in 500 requests)
-        if ( 1 === mt_rand( 1, 500 ) ) {
+        if ( 1 === random_int( 1, 500 ) ) { // wp_rand() lives in pluggable.php, which the legacy early bootstrap may not have loaded yet
             self::clean_stale_buckets( $rl_dir );
         }
     }
@@ -258,7 +258,7 @@ class Metzler_Webshield_Rate_Limiter {
             'severity'       => 'medium',
             'request_uri'    => base64_encode( $uri ),
             'user_agent'     => base64_encode( $user_agent ),
-            'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+            'request_method' => sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ),
             'payload'        => base64_encode( "Rate limit exceeded: {$burst_count} req/15s, {$sustained_count} req/60s" ),
             'encoding'       => 'base64',
         );
@@ -655,7 +655,7 @@ class Metzler_Webshield_Rate_Limiter {
     private static function clear_ip_bucket( string $ip ): void {
         $file = Metzler_Webshield_Storage::path( 'rl/' . md5( $ip ) . '.php' );
         if ( file_exists( $file ) ) {
-            @unlink( $file );
+            wp_delete_file( $file );
         }
     }
 
@@ -671,7 +671,7 @@ class Metzler_Webshield_Rate_Limiter {
         $now = time();
         foreach ( $files as $file ) {
             if ( is_file( $file ) && ( $now - filemtime( $file ) ) > 3600 ) {
-                @unlink( $file );
+                wp_delete_file( $file );
             }
         }
     }

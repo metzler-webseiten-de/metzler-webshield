@@ -1,13 +1,12 @@
 <?php
 
-use JetBrains\PhpStorm\NoReturn;
-
 if ( ! defined( 'ABSPATH' ) ) {
     die;
 }
 
 // Loaded standalone by the legacy mu-plugin bootstrapper (beta versions), so pull in storage ourselves.
 require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
+require_once __DIR__ . '/class-metzler-webshield-cloud-rules.php';
 
 class Metzler_Webshield_WAF {
     
@@ -97,53 +96,37 @@ class Metzler_Webshield_WAF {
     }
     
     private function load_rules(): void {
-        $upload_base = wp_upload_dir();
-        $enc_file = $upload_base['basedir'] . '/metzler-webshield/waf-rules.enc';
-        
-        if ( file_exists($enc_file) ) {
-            $token = Metzler_Webshield_Storage::get_waf_key();
-            $json = file_get_contents($enc_file);
-            if ( $token && $json ) {
-                $data = json_decode($json, true);
-                if ( isset($data['payload']) && isset($data['iv']) ) {
-                    $encrypted = base64_decode($data['payload']);
-                    $iv = base64_decode($data['iv']);
-                    $key = substr(hash('sha256', $token, true), 0, 32);
-                    $decrypted_json = openssl_decrypt($encrypted, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
-                    if ( $decrypted_json ) {
-                        $this->rules = json_decode($decrypted_json, true);
-                    }
-                }
-            }
-        } 
-        
-        // Fallback to hardcoded minimal rules if sync hasn't run yet or decryption failed
-        if ( empty($this->rules) ) {
-            $this->rules = array(
-                'SQLi' => array(
-                    '/(?:\b(?:union|select|insert|update|delete|drop|truncate|alter|create|rename|desc|replace)\b.*(?:from|into|table|database))/i',
-                    '/(?:\b(?:information_schema|mysql_.*\b|pg_.*\b|sysobjects|syscolumns|xp_cmdshell)\b)/i',
-                    '/(?:waitfor\s+delay\s+\'|\bbenchmark\s*\()/i',
-                    '/(?:--\s*$|\/\*.*?\*\/|;\s*(?:declare|set|exec|execute)\b)/i',
-                    '/(?:\b(?:concat|group_concat|load_file|outfile|dumpfile)\b\s*\()/i'
-                ),
-                'XSS' => array(
-                    '/(?:[<‹⟨]script.*?[>›⟩]?)/is',
-                    '/(?:[<‹⟨].*?\bon(?:load|error|click|mouseover|keydown|keyup)\s*=)/is',
-                    '/(?:javascript:|vbscript:|data:text\/html)/i',
-                    '/(?:eval\s*\(|setTimeout\s*\(|setInterval\s*\()/i',
-                    '/(?:document\.(?:cookie|location|write|body)|window\.(?:location|name))/i'
-                ),
-                'LFI' => array(
-                    '/(?:\.\.\/|\.\.\\\\|\.\.\/|%2e%2e%2f)/i',
-                    '/(?:etc\/passwd|etc\/shadow|etc\/hosts|boot\.ini|win\.ini|windows\\\\system32)/i',
-                    '/(?:%00|\\0)/'
-                ),
-                'Bad_Bots' => array(
-                    '/(?:nikto|sqlmap|nmap|zmeu|dirbuster|havij|curl|wget|python-requests|libwww-perl)/i'
-                )
-            );
-        }
+        // Built-in rule set, used until a connected site has synchronized cloud rules.
+        $local_rules = array(
+            'SQLi' => array(
+                '/(?:\b(?:union|select|insert|update|delete|drop|truncate|alter|create|rename|desc|replace)\b.*(?:from|into|table|database))/i',
+                '/(?:\b(?:information_schema|mysql_.*\b|pg_.*\b|sysobjects|syscolumns|xp_cmdshell)\b)/i',
+                '/(?:waitfor\s+delay\s+\'|\bbenchmark\s*\()/i',
+                '/(?:--\s*$|\/\*.*?\*\/|;\s*(?:declare|set|exec|execute)\b)/i',
+                '/(?:\b(?:concat|group_concat|load_file|outfile|dumpfile)\b\s*\()/i'
+            ),
+            'XSS' => array(
+                '/(?:[<‹⟨]script.*?[>›⟩]?)/is',
+                '/(?:[<‹⟨].*?\bon(?:load|error|click|mouseover|keydown|keyup)\s*=)/is',
+                '/(?:javascript:|vbscript:|data:text\/html)/i',
+                '/(?:eval\s*\(|setTimeout\s*\(|setInterval\s*\()/i',
+                '/(?:document\.(?:cookie|location|write|body)|window\.(?:location|name))/i'
+            ),
+            'LFI' => array(
+                '/(?:\.\.\/|\.\.\\\\|\.\.\/|%2e%2e%2f)/i',
+                '/(?:etc\/passwd|etc\/shadow|etc\/hosts|boot\.ini|win\.ini|windows\\\\system32)/i',
+                '/(?:%00|\\0)/'
+            ),
+            'Bad_Bots' => array(
+                '/(?:nikto|sqlmap|nmap|zmeu|dirbuster|havij|curl|wget|python-requests|libwww-perl)/i'
+            )
+        );
+
+        $cloud_rules = Metzler_Webshield_Cloud_Rules::load();
+        $base_rules  = ! empty( $cloud_rules ) ? $cloud_rules : $local_rules;
+
+        $rules = apply_filters( 'metzler_webshield_waf_rules', $base_rules );
+        $this->rules = ( is_array( $rules ) && ! empty( $rules ) ) ? $rules : $base_rules;
     }
     
     private function inspect_payload( $payload, $source ): void {
@@ -178,7 +161,6 @@ class Metzler_Webshield_WAF {
         }
     }
     
-    #[NoReturn]
     private function block_request( $category, $payload = '' ): void {
         $ip = class_exists( 'Metzler_Webshield' ) ? Metzler_Webshield::get_client_ip() : ( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ) ?: '127.0.0.1' );
         
@@ -201,6 +183,13 @@ class Metzler_Webshield_WAF {
                 if ( str_starts_with( $name, 'HTTP_' ) ) {
                     $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
                 }
+            }
+        }
+
+        // Never pass on credentials or sessions (a false positive may hit a legitimate visitor)
+        foreach ( array_keys( $headers ) as $header_name ) {
+            if ( in_array( strtolower( $header_name ), array( 'cookie', 'authorization', 'proxy-authorization', 'x-wp-nonce' ), true ) ) {
+                unset( $headers[ $header_name ] );
             }
         }
 

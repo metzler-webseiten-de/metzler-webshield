@@ -20,35 +20,40 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-config.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-cloud-rules.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-rate-limiter.php';
         
-        // Execute WAF immediately on plugin load
-        if ( get_option('metzler_webshield_enable_waf', false) !== false ) {
-            $waf = new Metzler_Webshield_WAF();
-            $waf->run();
-        }
-
-        // Execute General Rate Limiter & Under Attack Mode Shield
-        if ( get_option('metzler_webshield_enable_rate_limiting', '1') === '1' || get_option('metzler_webshield_under_attack_mode', '0') === '1' ) {
-            Metzler_Webshield_Rate_Limiter::check_request();
-        }
-        
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-login.php';
-        
-        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-updater.php';
 
         if ( is_admin() ) {
             require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'admin/class-metzler-webshield-admin.php';
         }
     }
-    
+
+    /**
+     * Runs the request shields as the very first plugins_loaded callback: every plugin (and add-on filter
+     * such as metzler_webshield_waf_rules) is registered by then, but WordPress has not reached init yet.
+     */
+    public function run_shields(): void {
+        if ( get_option('metzler_webshield_enable_waf', false) !== false ) {
+            $waf = new Metzler_Webshield_WAF();
+            $waf->run();
+        }
+
+        // General Rate Limiter & Under Attack Mode Shield
+        if ( get_option('metzler_webshield_enable_rate_limiting', '1') === '1' || get_option('metzler_webshield_under_attack_mode', '0') === '1' ) {
+            Metzler_Webshield_Rate_Limiter::check_request();
+        }
+    }
+
     public function run(): void {
-        $updater = new Metzler_Webshield_Updater(
-            METZLER_WEBSHIELD_PLUGIN_FILE,
-            METZLER_WEBSHIELD_VERSION,
-            METZLER_WEBSHIELD_API_URL
-        );
+        add_action( 'plugins_loaded', array( $this, 'run_shields' ), PHP_INT_MIN );
+
+        // @selfhosted-start (removed from the WordPress.org build by bin/build.sh)
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-updater.php';
+        $updater = new Metzler_Webshield_Updater( METZLER_WEBSHIELD_PLUGIN_FILE, METZLER_WEBSHIELD_VERSION, METZLER_WEBSHIELD_API_URL, 'mws_remote_update_info' );
         $updater->init();
+        // @selfhosted-end
 
         if ( is_admin() ) {
             $admin = new Metzler_Webshield_Admin();
@@ -84,9 +89,9 @@ class Metzler_Webshield {
 
         // Telemetry Batch Sync (Every 5 Minutes)
         add_action( 'metzler_webshield_five_minute_telemetry', array( $this, 'cron_sync_telemetry' ) );
-        
-        // WAF Rules Sync (Hourly)
-        add_action( 'metzler_webshield_sync_waf_rules', array( $this, 'cron_sync_waf_rules' ) );
+
+        // Cloud WAF Rules Sync (Hourly, connected sites only)
+        Metzler_Webshield_Cloud_Rules::init();
 
         // Author / User Enumeration Rate Limiter (Cloudflare- & Proxy-Aware)
         add_action( 'init', array( $this, 'check_author_enumeration' ) );
@@ -94,7 +99,40 @@ class Metzler_Webshield {
         // Ensure background crons remain scheduled
         if ( is_admin() ) {
             add_action( 'admin_init', array( 'Metzler_Webshield', 'ensure_scheduled_crons' ) );
+            add_action( 'admin_init', array( 'Metzler_Webshield', 'maybe_migrate' ) );
         }
+
+        // Add-ons (e.g. Metzler Webshield Pro) hook in here; all core classes are loaded at this point.
+        add_action( 'plugins_loaded', function () {
+            do_action( 'metzler_webshield_loaded' );
+        }, 1 );
+    }
+
+    /**
+     * One-time upgrade from the self-hosted 1.x line.
+     */
+    public static function maybe_migrate(): void {
+        if ( version_compare( get_option( 'metzler_webshield_version', '1.0.0' ), '2.0.0', '>=' ) ) {
+            return;
+        }
+
+        delete_transient( 'mws_remote_update_info' );
+
+        update_option( 'metzler_webshield_version', METZLER_WEBSHIELD_VERSION );
+    }
+
+    /**
+     * True when this site is connected to the Threat Intelligence Cloud (optional, free).
+     */
+    public static function is_cloud_connected(): bool {
+        return (bool) get_option( 'metzler_webshield_is_licensed' ) && get_option( 'metzler_webshield_license_token', '' ) !== '';
+    }
+
+    /**
+     * Telemetry is only ever sent after the administrator opted in and connected the site.
+     */
+    public static function telemetry_allowed(): bool {
+        return get_option( 'metzler_webshield_enable_telemetry', '0' ) === '1' && self::is_cloud_connected();
     }
 
     public function cron_verify_license(): void {
@@ -183,12 +221,12 @@ class Metzler_Webshield {
     public function cron_sync_telemetry(): void {
         self::protect_upload_dir();
 
-        if ( get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
-            // Only sync history if they actually have a valid license, so Free users don't burn their one-time sync!
-            if ( get_option('metzler_webshield_is_licensed') && get_option('metzler_webshield_historical_telemetry_sent', '0') !== '1' ) {
-                $this->sync_historical_telemetry();
-                update_option('metzler_webshield_historical_telemetry_sent', '1');
-            }
+        $telemetry_allowed = self::telemetry_allowed();
+
+        // One-time upload of previously logged blocks, covered by the opt-in text
+        if ( $telemetry_allowed && get_option('metzler_webshield_historical_telemetry_sent', '0') !== '1' ) {
+            $this->sync_historical_telemetry();
+            update_option('metzler_webshield_historical_telemetry_sent', '1');
         }
         $telemetry_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::TELEMETRY_FILE);
         $processing_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::PROCESSING_FILE);
@@ -204,7 +242,7 @@ class Metzler_Webshield {
 
         $lines = Metzler_Webshield_Storage::read_lines($processing_file);
         if ( empty($lines) ) {
-            @unlink($processing_file); // phpcs:ignore
+            wp_delete_file( $processing_file );
             return;
         }
 
@@ -233,7 +271,7 @@ class Metzler_Webshield {
             }
             
             // Only send to API if Telemetry is enabled
-            if ( get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
+            if ( $telemetry_allowed ) {
                 if ( count($logs) >= 1000 ) {
                     $this->send_telemetry_batch($logs);
                     $logs = array();
@@ -243,7 +281,7 @@ class Metzler_Webshield {
             }
         }
 
-        if ( count($logs) > 0 && get_option('metzler_webshield_enable_telemetry', '0') === '1' ) {
+        if ( count($logs) > 0 && $telemetry_allowed ) {
             $this->send_telemetry_batch($logs);
         }
 
@@ -253,20 +291,25 @@ class Metzler_Webshield {
             foreach ( $ui_summary as $ip => $data ) {
                 $types_str = implode(', ', $data['types']);
                 if ( $data['count'] === 1 ) {
-                    $msg = sprintf( __("WAF Block: 1 attack from IP %1\$s (%2\$s) prevented.", "metzler-webshield"), $ip, $types_str );
+                    /* translators: 1: IP address, 2: attack types */
+                    $msg = sprintf( __( 'WAF Block: 1 attack from IP %1$s (%2$s) prevented.', 'metzler-webshield' ), $ip, $types_str );
                 } else {
-                    $msg = sprintf( __("WAF Block: %1\$d attacks from IP %2\$s (%3\$s) prevented.", "metzler-webshield"), $data['count'], $ip, $types_str );
+                    /* translators: 1: number of attacks, 2: IP address, 3: attack types */
+                    $msg = sprintf( __( 'WAF Block: %1$d attacks from IP %2$s (%3$s) prevented.', 'metzler-webshield' ), $data['count'], $ip, $types_str );
                 }
                 Metzler_Webshield_Logger::log($msg, 'waf', 'success');
             }
         }
 
-        @unlink($processing_file); // phpcs:ignore
+        wp_delete_file( $processing_file );
     }
 
     private function send_telemetry_batch( $logs ): void {
         $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
         $token = get_option('metzler_webshield_license_token', '');
+        if ( $token === '' ) {
+            return;
+        }
         
         $payload_json = json_encode(array('logs' => $logs));
         $signature = hash_hmac('sha256', $payload_json, $token);
@@ -309,9 +352,14 @@ class Metzler_Webshield {
             wp_schedule_event( $three_am, 'daily', 'metzler_webshield_daily_scan' );
         }
 
-        // Schedule hourly license check
+        // Schedule hourly check of the optional cloud connection
         if ( ! wp_next_scheduled( 'metzler_webshield_hourly_license_check' ) ) {
             wp_schedule_event( time(), 'hourly', 'metzler_webshield_hourly_license_check' );
+        }
+
+        // WAF Rules Sync (Hourly; no request unless the site is connected)
+        if ( ! wp_next_scheduled( Metzler_Webshield_Cloud_Rules::SYNC_HOOK ) ) {
+            wp_schedule_event( time(), 'hourly', Metzler_Webshield_Cloud_Rules::SYNC_HOOK );
         }
 
         // Schedule 5-minute telemetry sync
@@ -319,10 +367,6 @@ class Metzler_Webshield {
             wp_schedule_event( time(), 'five_minutes', 'metzler_webshield_five_minute_telemetry' );
         }
 
-        // WAF Rules Sync (Hourly)
-        if ( ! wp_next_scheduled( 'metzler_webshield_sync_waf_rules' ) ) {
-            wp_schedule_event( time(), 'hourly', 'metzler_webshield_sync_waf_rules' );
-        }
     }
 
     public static function activate(): void {
@@ -342,35 +386,7 @@ class Metzler_Webshield {
         
         self::protect_upload_dir();
         self::ensure_scheduled_crons();
-    }
-
-    public function cron_sync_waf_rules(): void {
-        $token = get_option('metzler_webshield_license_token', '');
-        if ( empty($token) ) return;
-
-        $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
-        
-        $response = wp_remote_get( $api_url . '/waf/rules', array(
-            'headers' => array(
-                'Authorization' => 'Bearer ' . $token,
-                'Accept'        => 'application/json'
-            ),
-            'timeout' => 15,
-        ));
-
-        if ( is_wp_error($response) ) return;
-
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-
-        if ( isset($data['success']) && $data['success'] && isset($data['payload']) && isset($data['iv']) ) {
-            $upload_dir = Metzler_Webshield_Storage::ensure_dir();
-            
-            // We save the RAW encrypted JSON. The WAF will decrypt it on the fly using the stored WAF key
-            file_put_contents($upload_dir . '/waf-rules.enc', $body, LOCK_EX); // phpcs:ignore
-            
-            Metzler_Webshield_Logger::log(__("WAF rules successfully synchronized from Threat Intelligence Cloud.", "metzler-webshield"), "system", "success");
-        }
+        update_option( 'metzler_webshield_version', METZLER_WEBSHIELD_VERSION );
     }
 
     public static function get_client_ip(): string {
@@ -403,7 +419,8 @@ class Metzler_Webshield {
             return;
         }
 
-        if ( isset($_GET['author']) && is_numeric($_GET['author']) ) {
+        // Public front-end request without a form, so there is no nonce to verify
+        if ( isset($_GET['author']) && is_numeric( sanitize_text_field( wp_unslash( $_GET['author'] ) ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $ip = self::get_client_ip();
             $transient_key = 'mws_ae_' . md5($ip);
             $count = (int) get_transient($transient_key);
@@ -420,7 +437,7 @@ class Metzler_Webshield {
                     'severity'       => 'medium',
                     'request_uri'    => isset($_SERVER['REQUEST_URI']) ? base64_encode(wp_unslash($_SERVER['REQUEST_URI'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
                     'user_agent'     => isset($_SERVER['HTTP_USER_AGENT']) ? base64_encode(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-                    'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+                    'request_method' => sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ),
                     'payload'        => base64_encode("Author enumeration rate limit exceeded: {$count} probes in 60s"),
                     'encoding'       => 'base64'
                 );
@@ -435,7 +452,7 @@ class Metzler_Webshield {
                         $count
                     ),
                     'waf',
-                    'warning'
+                    'success'
                 );
 
                 wp_die(
@@ -455,5 +472,6 @@ class Metzler_Webshield {
         wp_clear_scheduled_hook( 'metzler_webshield_daily_scan' );
         wp_clear_scheduled_hook( 'metzler_webshield_hourly_license_check' );
         wp_clear_scheduled_hook( 'metzler_webshield_five_minute_telemetry' );
+        wp_clear_scheduled_hook( 'metzler_webshield_sync_waf_rules' );
     }
 }

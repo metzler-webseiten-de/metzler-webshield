@@ -281,6 +281,8 @@ class Metzler_Webshield_Queue {
         update_option('metzler_webshield_enable_rate_limiting', $enable_ratelimit);
         update_option('metzler_webshield_under_attack_mode', $under_attack_mode);
         update_option('metzler_webshield_enable_telemetry', $enable_telemetry);
+
+        Metzler_Webshield_Firewall_Setup::write_snapshot();
         
         // WAF is enabled/disabled just by the option now. No mu-plugin installer needed.
         

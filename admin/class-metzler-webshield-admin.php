@@ -9,6 +9,7 @@ class Metzler_Webshield_Admin {
         add_action( 'wp_ajax_metzler_webshield_verify_license', array( $this, 'ajax_verify_license' ) );
         add_action( 'wp_ajax_metzler_webshield_recheck_license', array( $this, 'ajax_recheck_license' ) );
         add_action( 'wp_ajax_metzler_webshield_remove_license', array( $this, 'ajax_remove_license' ) );
+        add_action( 'wp_ajax_metzler_webshield_extended_protection', array( $this, 'ajax_extended_protection' ) );
 
         // 1. Frontpage Dashboard Widget on wp-admin/index.php
         add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
@@ -138,6 +139,7 @@ class Metzler_Webshield_Admin {
                 'update_error'       => __('Error during update', 'metzler-webshield'),
                 'generic_error'      => __('An error occurred.', 'metzler-webshield'),
                 'scan_aborted_msg'   => __('Scan aborted: ', 'metzler-webshield'),
+                'confirm_disable_extended' => __('Turn off extended protection? The firewall then only inspects requests that load WordPress.', 'metzler-webshield'),
                 'connection_error'   => __('Connection problem. Retrying...', 'metzler-webshield'),
                 'creating_baseline'  => __('Creating baseline...', 'metzler-webshield'),
                 'set_fim_baseline'   => __('Set FIM Baseline', 'metzler-webshield'),
@@ -286,6 +288,27 @@ class Metzler_Webshield_Admin {
         do_action( 'metzler_webshield_license_removed' );
 
         wp_send_json_success( array( 'message' => __( 'Site disconnected.', 'metzler-webshield' ) ) );
+    }
+
+    /**
+     * Turns the firewall before WordPress (auto_prepend_file) on or off.
+     */
+    public function ajax_extended_protection() {
+        check_ajax_referer( 'metzler_webshield_nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die();
+
+        if ( sanitize_text_field( wp_unslash( $_POST['enable'] ?? '0' ) ) === '1' ) {
+            $result = Metzler_Webshield_Firewall_Setup::enable();
+            if ( is_wp_error( $result ) ) {
+                wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+            }
+            Metzler_Webshield_Logger::log( __( 'Extended protection enabled: the firewall now runs before WordPress.', 'metzler-webshield' ), 'system', 'success' );
+        } else {
+            Metzler_Webshield_Firewall_Setup::disable();
+            Metzler_Webshield_Logger::log( __( 'Extended protection disabled.', 'metzler-webshield' ), 'system', 'warning' );
+        }
+
+        wp_send_json_success();
     }
 
     /**

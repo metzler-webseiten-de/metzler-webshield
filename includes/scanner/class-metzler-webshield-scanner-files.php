@@ -112,12 +112,19 @@ class Metzler_Webshield_Scanner_Files {
                         
                         // Rule 2: Secure .htaccess and web.config (also in Root)
                         if ( !$threat_found && $basename === '.htaccess' ) {
-                            $content = strtolower(file_get_contents($full_path));
+                            $content = file_get_contents($full_path);
+                            // auto_prepend_file is fine for the firewall bootstrap (extended protection), not for anything else
                             if ( preg_match('/php_flag\s+engine\s+(on|1)/i', $content) ||
-                                 preg_match('/php_value\s+(auto_prepend_file|auto_append_file)/i', $content) ||
+                                 Metzler_Webshield_Firewall_Setup::has_foreign_prepend( $content ) ||
                                  preg_match('/(sethandler|addhandler|addtype)\s+[^>\n]*php/i', $content) ) {
                                 $threat_found = true;
                                 $threat_reason = __('Dangerous PHP activation in .htaccess file.', 'metzler-webshield');
+                            }
+                        }
+                        if ( !$threat_found && ( $basename === '.user.ini' || $basename === 'php.ini' ) ) {
+                            if ( Metzler_Webshield_Firewall_Setup::has_foreign_prepend( (string) file_get_contents($full_path) ) ) {
+                                $threat_found = true;
+                                $threat_reason = __('PHP file injected into every request via auto_prepend_file.', 'metzler-webshield');
                             }
                         }
                         if ( !$threat_found && $basename === 'web.config' ) {

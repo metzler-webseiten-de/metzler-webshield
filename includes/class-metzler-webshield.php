@@ -23,6 +23,7 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-cloud-rules.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-rate-limiter.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-firewall-setup.php';
         
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-login.php';
 
@@ -36,7 +37,8 @@ class Metzler_Webshield {
      * such as metzler_webshield_waf_rules) is registered by then, but WordPress has not reached init yet.
      */
     public function run_shields(): void {
-        if ( get_option('metzler_webshield_enable_waf', '0') === '1' ) {
+        // Already inspected before WordPress when extended protection (auto_prepend_file) is active
+        if ( get_option('metzler_webshield_enable_waf', '0') === '1' && ! defined( 'METZLER_WEBSHIELD_WAF_DONE' ) ) {
             $waf = new Metzler_Webshield_WAF();
             $waf->run();
         }
@@ -93,6 +95,9 @@ class Metzler_Webshield {
 
         // Cloud WAF Rules Sync (Hourly, connected sites only)
         Metzler_Webshield_Cloud_Rules::init();
+
+        // Extended protection: firewall snapshot for the auto_prepend_file mode
+        Metzler_Webshield_Firewall_Setup::init();
 
         // Author / User Enumeration Rate Limiter (Cloudflare- & Proxy-Aware)
         add_action( 'init', array( $this, 'check_author_enumeration' ) );
@@ -388,6 +393,10 @@ class Metzler_Webshield {
         self::protect_upload_dir();
         self::ensure_scheduled_crons();
         update_option( 'metzler_webshield_version', METZLER_WEBSHIELD_VERSION );
+
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-firewall-setup.php';
+        Metzler_Webshield_Firewall_Setup::write_snapshot();
+        Metzler_Webshield_Firewall_Setup::activate();
     }
 
     public static function get_client_ip(): string {
@@ -459,5 +468,8 @@ class Metzler_Webshield {
         wp_clear_scheduled_hook( 'metzler_webshield_hourly_license_check' );
         wp_clear_scheduled_hook( 'metzler_webshield_five_minute_telemetry' );
         wp_clear_scheduled_hook( 'metzler_webshield_sync_waf_rules' );
+
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-firewall-setup.php';
+        Metzler_Webshield_Firewall_Setup::deactivate();
     }
 }

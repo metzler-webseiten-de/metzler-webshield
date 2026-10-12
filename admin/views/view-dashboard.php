@@ -557,6 +557,47 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                         </td>
                     </tr>
                     <tr>
+                        <th scope="row"><?php echo esc_html__("Extended Protection", "metzler-webshield"); ?></th>
+                        <td>
+                            <?php
+                                $metzler_webshield_fw = Metzler_Webshield_Firewall_Setup::status();
+                                if ( $metzler_webshield_fw['active'] ) {
+                                    $metzler_webshield_fw_class = 'waf-active';
+                                    $metzler_webshield_fw_text  = __( 'Active: the firewall runs before WordPress and every other PHP file.', 'metzler-webshield' );
+                                } elseif ( $metzler_webshield_fw['pending'] ) {
+                                    $metzler_webshield_fw_class = 'waf-inactive';
+                                    $metzler_webshield_fw_text  = sprintf(
+                                        /* translators: %d: minutes */
+                                        __( 'Set up. Your server applies the change within %d minutes, then reload this page.', 'metzler-webshield' ),
+                                        max( 1, (int) ceil( $metzler_webshield_fw['cache_ttl'] / 60 ) )
+                                    );
+                                } else {
+                                    $metzler_webshield_fw_class = 'waf-inactive';
+                                    $metzler_webshield_fw_text  = __( 'Inactive: the firewall only inspects requests that load WordPress.', 'metzler-webshield' );
+                                }
+                            ?>
+                            <p class="metzler-webshield-stat-highlight <?php echo esc_attr( $metzler_webshield_fw_class ); ?>">
+                                <?php echo esc_html__( 'Status:', 'metzler-webshield' ) . ' ' . esc_html( $metzler_webshield_fw_text ); ?>
+                            </p>
+                            <?php if ( '' !== $metzler_webshield_fw['conflict'] ) : ?>
+                                <p class="description" style="color:#996800;">
+                                    <?php
+                                    /* translators: %s: file path */
+                                    echo esc_html( sprintf( __( 'Another file is already loaded before WordPress (%s), usually by another security plugin. Only one firewall can use this mode.', 'metzler-webshield' ), $metzler_webshield_fw['conflict'] ) );
+                                    ?>
+                                </p>
+                            <?php elseif ( null === $metzler_webshield_fw['method'] && ! $metzler_webshield_fw['active'] ) : ?>
+                                <p class="description" style="color:#996800;"><?php echo esc_html__( 'This server does not allow PHP settings per directory (.user.ini or .htaccess). Ask your host to set auto_prepend_file, or keep the standard protection.', 'metzler-webshield' ); ?></p>
+                            <?php else : ?>
+                                <button type="button" id="btn-extended-protection" class="button" data-enable="<?php echo $metzler_webshield_fw['enabled'] ? '0' : '1'; ?>">
+                                    <?php echo $metzler_webshield_fw['enabled'] ? esc_html__( 'Turn off', 'metzler-webshield' ) : esc_html__( 'Turn on extended protection', 'metzler-webshield' ); ?>
+                                </button>
+                                <span id="extended-protection-feedback" class="metzler-webshield-action-feedback"></span>
+                            <?php endif; ?>
+                            <p class="description"><?php echo esc_html__( 'Loads the firewall before WordPress via auto_prepend_file, so it also inspects exploits that call vulnerable plugin files directly and never load WordPress. Adds a small file to the WordPress directory and one line to .user.ini or .htaccess.', 'metzler-webshield' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><?php echo esc_html__("XML-RPC Interface (Hardening)", "metzler-webshield"); ?></th>
                         <td>
                             <label>

@@ -1,5 +1,5 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) && ! defined( 'METZLER_WEBSHIELD_WAF_PREPENDED' ) ) exit;
 
 /**
  * Private on-disk storage for security data (telemetry buffer, WAF key, rate-limit buckets).
@@ -19,6 +19,10 @@ class Metzler_Webshield_Storage {
     const WAF_KEY_FILE    = 'waf-key.php';
 
     public static function dir(): string {
+        // Set by the firewall bootstrap (auto_prepend_file), which runs before WordPress defines WP_CONTENT_DIR
+        if ( defined( 'METZLER_WEBSHIELD_STORAGE_DIR' ) ) {
+            return METZLER_WEBSHIELD_STORAGE_DIR;
+        }
         if ( defined( 'WP_CONTENT_DIR' ) ) {
             return WP_CONTENT_DIR . '/uploads/metzler-webshield';
         }

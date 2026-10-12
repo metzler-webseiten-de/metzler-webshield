@@ -618,6 +618,33 @@ jQuery(document).ready(function($) {
         });
     });
     
+    $('#btn-extended-protection').on('click', function(e) {
+        e.preventDefault();
+        const btn = $(this);
+        const enable = String(btn.data('enable'));
+        const feedback = $('#extended-protection-feedback');
+        if (enable !== '1' && !confirm(metzler_webshield_ajax.i18n.confirm_disable_extended)) {
+            return;
+        }
+        btn.prop('disabled', true);
+
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_extended_protection',
+            enable: enable
+        }, function(res) {
+            if (res.success) {
+                location.reload();
+                return;
+            }
+            btn.prop('disabled', false);
+            feedback.css('color', 'red').text(res.data && res.data.message ? res.data.message : metzler_webshield_ajax.i18n.generic_error);
+        }).fail(function() {
+            btn.prop('disabled', false);
+            feedback.css('color', 'red').text(metzler_webshield_ajax.i18n.request_error);
+        });
+    });
+
     $('#btn-rebuild-fim').on('click', function(e) {
         e.preventDefault();
         const btn = $(this);

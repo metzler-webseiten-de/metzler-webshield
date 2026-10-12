@@ -49,6 +49,8 @@ $metzler_webshield_options = array(
 	'metzler_webshield_last_scan_start',
 	'metzler_webshield_whitelist',
 	'metzler_webshield_rules_synced',
+	'metzler_webshield_extended_protection',
+	'metzler_webshield_snapshot_version',
 );
 
 foreach ( $metzler_webshield_options as $metzler_webshield_option ) {
@@ -68,7 +70,11 @@ if ( file_exists( $metzler_webshield_mu_file ) ) {
 	wp_delete_file( $metzler_webshield_mu_file );
 }
 
-// 4. Remove uploads directory (quarantine, telemetry buffer, rate-limit buckets)
+// 4. Remove the firewall directive (.user.ini / .htaccess) of the extended protection
+require_once __DIR__ . '/includes/waf/class-metzler-webshield-firewall-setup.php';
+Metzler_Webshield_Firewall_Setup::uninstall();
+
+// 5. Remove uploads directory (quarantine, telemetry buffer, rate-limit buckets)
 $metzler_webshield_upload_base = wp_upload_dir();
 $metzler_webshield_upload_dir  = $metzler_webshield_upload_base['basedir'] . '/metzler-webshield';
 
@@ -87,7 +93,7 @@ if ( is_dir( $metzler_webshield_upload_dir ) ) {
 	@rmdir( $metzler_webshield_upload_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir, WordPress.PHP.NoSilencedErrors.Discouraged
 }
 
-// 5. Clear scheduled crons
+// 6. Clear scheduled crons
 wp_clear_scheduled_hook( 'metzler_webshield_daily_scan' );
 wp_clear_scheduled_hook( 'metzler_webshield_hourly_license_check' );
 wp_clear_scheduled_hook( 'metzler_webshield_five_minute_telemetry' );

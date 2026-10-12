@@ -1,6 +1,6 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) ) {
+if ( ! defined( 'ABSPATH' ) && ! defined( 'METZLER_WEBSHIELD_WAF_PREPENDED' ) ) {
     die;
 }
 
@@ -27,9 +27,21 @@ class Metzler_Webshield_WAF {
     const MAX_DECODE_PASSES = 3;
 
     private array $rules = array();
-    
-    public function __construct() {
-        $this->load_rules();
+    private bool $xmlrpc_disabled = false;
+
+    /**
+     * @param array|null $config Firewall snapshot when running before WordPress (auto_prepend_file):
+     *                           there are no options or filters yet, so rules and settings come from it.
+     */
+    public function __construct( ?array $config = null ) {
+        if ( null === $config ) {
+            $this->rules           = self::build_rules();
+            $this->xmlrpc_disabled = get_option( 'metzler_webshield_disable_xmlrpc', '0' ) === '1';
+            return;
+        }
+
+        $this->rules           = ! empty( $config['rules'] ) && is_array( $config['rules'] ) ? $config['rules'] : self::local_rules();
+        $this->xmlrpc_disabled = ! empty( $config['xmlrpc_disabled'] );
     }
     
     public function run(): void {
@@ -46,7 +58,7 @@ class Metzler_Webshield_WAF {
         // XML-RPC Inspection & Abuse Protection
         $is_xmlrpc = (basename($script_name) === 'xmlrpc.php' || stripos($script_name, 'xmlrpc.php') !== false || stripos($uri, 'xmlrpc.php') !== false);
         if ( $is_xmlrpc ) {
-            if ( get_option('metzler_webshield_disable_xmlrpc', '0') === '1' ) {
+            if ( $this->xmlrpc_disabled ) {
                 $this->block_request( 'XML_RPC_Abuse', 'Blocked XML-RPC request (disabled by administrator)' );
             }
             
@@ -63,24 +75,24 @@ class Metzler_Webshield_WAF {
             $this->browser_integrity_check();
         }
         
-        $this->inspect_payload(wp_unslash($_GET), 'GET'); // phpcs:ignore WordPress.Security.NonceVerification
-        $this->inspect_payload(wp_unslash($_POST), 'POST'); // phpcs:ignore WordPress.Security.NonceVerification
-        $this->inspect_payload(wp_unslash($_COOKIE), 'COOKIE');
+        $this->inspect_payload(self::unslash($_GET), 'GET'); // phpcs:ignore WordPress.Security.NonceVerification
+        $this->inspect_payload(self::unslash($_POST), 'POST'); // phpcs:ignore WordPress.Security.NonceVerification
+        $this->inspect_payload(self::unslash($_COOKIE), 'COOKIE');
         $this->inspect_json_body();
         
         // Inspect Raw URIs (Crucial for pretty permalinks where $_GET is empty during MU phase)
         if ( isset($_SERVER['REQUEST_URI']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $request_uri = wp_unslash($_SERVER['REQUEST_URI']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $request_uri = self::unslash($_SERVER['REQUEST_URI']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $this->inspect_string( $request_uri, 'uri' );
-            $this->inspect_string( (string) wp_parse_url( $request_uri, PHP_URL_PATH ), 'path' );
+            $this->inspect_string( (string) parse_url( $request_uri, PHP_URL_PATH ), 'path' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- also runs before WordPress
         }
         if ( isset($_SERVER['QUERY_STRING']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( wp_unslash($_SERVER['QUERY_STRING']), 'uri' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( self::unslash($_SERVER['QUERY_STRING']), 'uri' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
         // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots)
         if ( ! $is_loopback && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-            $this->inspect_string( wp_unslash($_SERVER['HTTP_USER_AGENT']), 'user_agent' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $this->inspect_string( self::unslash($_SERVER['HTTP_USER_AGENT']), 'user_agent' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
     }
     
@@ -112,11 +124,25 @@ class Metzler_Webshield_WAF {
         }
     }
     
-    private function load_rules(): void {
-        // Built-in rule set, used until a connected site has synchronized cloud rules.
-        // Rules look for query structure (quotes, operators, SQL/JS syntax) rather than single words, so
-        // ordinary text like "select a size from the list" or "please delete my data" passes.
-        $local_rules = array(
+    /**
+     * Rule set of a WordPress request: synchronized cloud rules (connected sites) or the built-in rules,
+     * extended by add-ons. Also written into the firewall snapshot for the auto_prepend_file mode.
+     */
+    public static function build_rules(): array {
+        $cloud_rules = Metzler_Webshield_Cloud_Rules::load();
+        $base_rules  = ! empty( $cloud_rules ) ? $cloud_rules : self::local_rules();
+
+        $rules = apply_filters( 'metzler_webshield_waf_rules', $base_rules );
+        return ( is_array( $rules ) && ! empty( $rules ) ) ? $rules : $base_rules;
+    }
+
+    /**
+     * Built-in rule set, used until a connected site has synchronized cloud rules.
+     * Rules look for query structure (quotes, operators, SQL/JS syntax) rather than single words, so
+     * ordinary text like "select a size from the list" or "please delete my data" passes.
+     */
+    public static function local_rules(): array {
+        return array(
             'SQLi' => array(
                 '/\bunion(?:\s|\/\*.*?\*\/|\()+(?:all\b|distinct\b)?(?:\s|\/\*.*?\*\/|\()*select\b/is',
                 '/[\'"`)]\s*(?:\b(?:or|and|xor)\b|\|\||&&)\s*[\'"`(]{0,2}\s*[\w.-]+\s*[\'"`)]{0,2}\s*(?:=|<|>|\blike\b|\brlike\b|\bregexp\b|\bis\s+not\b)/i',
@@ -141,14 +167,8 @@ class Metzler_Webshield_WAF {
                 '/(?:nikto|sqlmap|nmap|zmeu|dirbuster|havij|curl|wget|python-requests|libwww-perl)/i'
             )
         );
-
-        $cloud_rules = Metzler_Webshield_Cloud_Rules::load();
-        $base_rules  = ! empty( $cloud_rules ) ? $cloud_rules : $local_rules;
-
-        $rules = apply_filters( 'metzler_webshield_waf_rules', $base_rules );
-        $this->rules = ( is_array( $rules ) && ! empty( $rules ) ) ? $rules : $base_rules;
     }
-    
+
     private function inspect_payload( $payload, $source ): void {
         if ( ! is_array($payload) ) return;
         
@@ -219,6 +239,13 @@ class Metzler_Webshield_WAF {
     }
 
     /**
+     * WordPress slashes the superglobals while it loads; before that (auto_prepend_file) they are raw.
+     */
+    private static function unslash( $value ) {
+        return function_exists( 'wp_unslash' ) ? wp_unslash( $value ) : $value;
+    }
+
+    /**
      * The value itself plus every further URL-decoded form of it.
      */
     private static function decoded_variants( string $string ): array {
@@ -280,19 +307,29 @@ class Metzler_Webshield_WAF {
 
         Metzler_Webshield_Storage::append_telemetry($telemetry_data);
         
-        $title = __('Access Blocked', 'metzler-webshield');
-        $message = '<h1>' . esc_html__('Access Blocked', 'metzler-webshield') . '</h1>';
-        $message .= '<p>' . esc_html__('Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.', 'metzler-webshield') . '</p>';
-        $message .= '<p><strong>' . esc_html__('IP:', 'metzler-webshield') . '</strong> ' . esc_html( $ip ) . '</p>';
-        $message .= '<p><strong>' . esc_html__('Event ID:', 'metzler-webshield') . '</strong> ' . esc_html(md5($ip . time())) . '</p>';
-        
-        if ( function_exists('wp_die') ) {
+        $event_id = md5( $ip . time() );
+
+        if ( function_exists( 'wp_die' ) ) {
+            $title = __('Access Blocked', 'metzler-webshield');
+            $message = '<h1>' . esc_html__('Access Blocked', 'metzler-webshield') . '</h1>';
+            $message .= '<p>' . esc_html__('Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.', 'metzler-webshield') . '</p>';
+            $message .= '<p><strong>' . esc_html__('IP:', 'metzler-webshield') . '</strong> ' . esc_html( $ip ) . '</p>';
+            $message .= '<p><strong>' . esc_html__('Event ID:', 'metzler-webshield') . '</strong> ' . esc_html( $event_id ) . '</p>';
             wp_die(wp_kses_post($message), esc_html($title), array('response' => 403));
-        } else {
-            header('HTTP/1.1 403 Forbidden');
-            header('Status: 403 Forbidden');
-            echo wp_kses_post($message); // phpcs:ignore WordPress.Security.EscapeOutput
-            exit;
         }
+
+        // Before WordPress (auto_prepend_file): no translations or wp_die() yet
+        if ( ! headers_sent() ) {
+            http_response_code( 403 );
+            header( 'Content-Type: text/html; charset=utf-8' );
+            header( 'Cache-Control: no-store' );
+        }
+        $escape = static function ( string $text ): string {
+            return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+        };
+        echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Access Blocked</title></head><body style="font-family:sans-serif;max-width:640px;margin:10vh auto;padding:0 16px;">' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup
+            . '<h1>Access Blocked</h1><p>Your request was classified as potentially dangerous by our Web Application Firewall and blocked for security reasons.</p>'
+            . '<p><strong>IP:</strong> ' . $escape( $ip ) . '</p><p><strong>Event ID:</strong> ' . $escape( $event_id ) . '</p></body></html>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above
+        exit;
     }
 }

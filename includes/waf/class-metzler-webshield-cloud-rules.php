@@ -1,5 +1,5 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
+if ( ! defined( 'ABSPATH' ) && ! defined( 'METZLER_WEBSHIELD_WAF_PREPENDED' ) ) {
     exit;
 }
 
@@ -59,6 +59,7 @@ class Metzler_Webshield_Cloud_Rules {
             Metzler_Webshield_Storage::ensure_dir();
             file_put_contents( Metzler_Webshield_Storage::path( self::RULES_FILE ), $body, LOCK_EX ); // phpcs:ignore
             update_option( self::SYNCED_OPTION, time() );
+            self::refresh_firewall_snapshot();
 
             Metzler_Webshield_Logger::log( __( 'WAF rules successfully synchronized from Threat Intelligence Cloud.', 'metzler-webshield' ), 'system', 'success' );
         }
@@ -93,5 +94,15 @@ class Metzler_Webshield_Cloud_Rules {
     public static function delete(): void {
         wp_delete_file( Metzler_Webshield_Storage::path( self::RULES_FILE ) );
         delete_option( self::SYNCED_OPTION );
+        self::refresh_firewall_snapshot();
+    }
+
+    /**
+     * The firewall before WordPress (auto_prepend_file) reads its rules from the snapshot.
+     */
+    private static function refresh_firewall_snapshot(): void {
+        if ( class_exists( 'Metzler_Webshield_Firewall_Setup' ) ) {
+            Metzler_Webshield_Firewall_Setup::write_snapshot();
+        }
     }
 }

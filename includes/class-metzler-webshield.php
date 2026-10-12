@@ -36,7 +36,7 @@ class Metzler_Webshield {
      * such as metzler_webshield_waf_rules) is registered by then, but WordPress has not reached init yet.
      */
     public function run_shields(): void {
-        if ( get_option('metzler_webshield_enable_waf', false) !== false ) {
+        if ( get_option('metzler_webshield_enable_waf', '0') === '1' ) {
             $waf = new Metzler_Webshield_WAF();
             $waf->run();
         }

@@ -1,3 +1,6 @@
 .idea/
 wp-cli.phar
 /dist/
+
+# Rollout logs (contain customer domains)
+rollout-*.log

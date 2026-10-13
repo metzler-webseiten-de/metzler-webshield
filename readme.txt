@@ -3,7 +3,7 @@ Contributors: metzler-webseiten, metzlerwp
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -74,6 +74,10 @@ Only checksum requests to WordPress.org during scans and an anonymous request fo
 No. Since Metzler Webshield runs early, it typically blocks bad requests before they hit your cache.
 
 == Changelog ==
+
+= 2.0.3 =
+* Fixed: robots.txt, ads.txt, sitemaps, favicon.ico and /.well-known/ (security.txt, Let's Encrypt) are no longer blocked for crawlers without an Accept header or with tool User-Agents. A blocked robots.txt made Google ignore its rules or pause crawling. Attack payloads in these requests are still blocked.
+* Fixed: The integrity check no longer logs the database error "Can't DROP 'file_path'" on new installations.
 
 = 2.0.2 =
 * Fixed: An outage or server error of the Threat Intelligence Cloud no longer disconnects the site and turns telemetry off. Only a key the API explicitly rejects disconnects it.

@@ -69,9 +69,14 @@ class Metzler_Webshield_WAF {
             }
         }
         
+        // Files that exist for crawlers (robots.txt, sitemaps, .well-known/...) skip the client checks: crawlers often
+        // send no Accept header or a tool User-Agent, and a blocked robots.txt makes Google ignore its rules (403)
+        // or stop crawling (429). Payload inspection below still applies.
+        $is_crawler_file = self::is_crawler_file( (string) parse_url( $uri, PHP_URL_PATH ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- also runs before WordPress
+
         // Only skip browser integrity checks for automated background tasks, 
         // but KEEP the actual malware payload inspection active for them!
-        if ( ! $is_cron && ! $is_loopback ) {
+        if ( ! $is_cron && ! $is_loopback && ! $is_crawler_file ) {
             $this->browser_integrity_check();
         }
         
@@ -90,8 +95,9 @@ class Metzler_Webshield_WAF {
             $this->inspect_string( self::unslash($_SERVER['QUERY_STRING']), 'uri' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
-        // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots)
-        if ( ! $is_loopback && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots,
+        // and for crawler files, which tools like curl may fetch)
+        if ( ! $is_loopback && ! $is_crawler_file && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $this->inspect_string( self::unslash($_SERVER['HTTP_USER_AGENT']), 'user_agent' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
     }
@@ -236,6 +242,14 @@ class Metzler_Webshield_WAF {
                 }
             }
         }
+    }
+
+    /**
+     * Public files meant for crawlers and tools: robots.txt, ads.txt, sitemaps, favicon and /.well-known/
+     * (security.txt, Let's Encrypt challenges). Works for sites in a subdirectory, too.
+     */
+    public static function is_crawler_file( string $path ): bool {
+        return (bool) preg_match( '#/(?:robots\.txt|ads\.txt|app-ads\.txt|favicon\.ico|[\w-]*sitemap[\w-]*\.xml(?:\.gz)?|\.well-known/.*)$#i', $path );
     }
 
     /**

@@ -58,6 +58,12 @@ class Metzler_Webshield_Rate_Limiter {
             return;
         }
 
+        // robots.txt & co. are read once per crawler visit; a 429 there makes Google pause crawling the whole site.
+        // Sitemaps stay rate limited: WordPress builds them from the database.
+        if ( preg_match( '#/(?:robots\.txt|ads\.txt|app-ads\.txt|\.well-known/.*)$#i', (string) wp_parse_url( $uri, PHP_URL_PATH ) ) ) {
+            return;
+        }
+
         // 4. Resolve client IP (proxy headers only count when they come from a trusted proxy)
         $client_ip = Metzler_Webshield_Request::client_ip();
 

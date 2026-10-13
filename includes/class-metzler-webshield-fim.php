@@ -20,8 +20,11 @@ class Metzler_Webshield_FIM {
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         dbDelta( $sql );
 
-        // Ensure old 191-character prefix index is removed to avoid duplicate key collisions on long paths
-        @$wpdb->query( "ALTER TABLE $table_name DROP INDEX file_path" ); // phpcs:ignore
+        // Ensure old 191-character prefix index is removed to avoid duplicate key collisions on long paths.
+        // Only if it exists: dropping a missing index is a database error, which WP-CLI and WP_DEBUG print.
+        if ( $wpdb->get_var( "SHOW INDEX FROM $table_name WHERE Key_name = 'file_path'" ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+            $wpdb->query( "ALTER TABLE $table_name DROP INDEX file_path" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        }
     }
     
     public function init(): void {

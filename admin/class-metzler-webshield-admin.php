@@ -247,30 +247,35 @@ class Metzler_Webshield_Admin {
             )
         ) );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( array( 'message' => $response->get_error_message() ) );
-        }
-
-        $body = wp_remote_retrieve_body( $response );
-        $data = json_decode( $body, true );
-
-        if ( isset( $data['success'] ) && $data['success'] ) {
-            $tier = sanitize_text_field( $data['tier'] ?? 'free' );
-            update_option( 'metzler_webshield_license_tier', $tier );
-            if ( ! empty( $data['email'] ) ) {
-                update_option( 'metzler_webshield_verified_email', sanitize_email( $data['email'] ) );
-            }
-            update_option( 'metzler_webshield_is_licensed', true );
-
-            wp_send_json_success( array(
-                'tier'    => $tier,
-                'message' => __( 'Connection status updated.', 'metzler-webshield' ),
-            ) );
-        } else {
+        if ( Metzler_Webshield::license_rejected( $response ) ) {
             update_option( 'metzler_webshield_is_licensed', false );
             update_option( 'metzler_webshield_enable_telemetry', '0' );
             wp_send_json_error( array( 'message' => __( 'Key verification failed.', 'metzler-webshield' ) ) );
         }
+
+        $data = is_wp_error( $response ) ? null : json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( empty( $data['success'] ) ) {
+            // Outage or network error: keep the connection, nothing is known about the key
+            wp_send_json_error( array(
+                'kept'    => true,
+                'message' => __( 'The Threat Intelligence Cloud is not reachable right now. The connection is kept; please try again later.', 'metzler-webshield' ),
+            ) );
+        }
+
+        $tier = sanitize_text_field( $data['tier'] ?? 'free' );
+        update_option( 'metzler_webshield_license_tier', $tier );
+        if ( ! empty( $data['email'] ) ) {
+            update_option( 'metzler_webshield_verified_email', sanitize_email( $data['email'] ) );
+        }
+        update_option( 'metzler_webshield_is_licensed', true );
+
+        // Fetch the current cloud rules right away instead of waiting for the hourly sync
+        Metzler_Webshield_Cloud_Rules::sync();
+
+        wp_send_json_success( array(
+            'tier'    => $tier,
+            'message' => __( 'Connection status updated.', 'metzler-webshield' ),
+        ) );
     }
 
     public function ajax_remove_license() {

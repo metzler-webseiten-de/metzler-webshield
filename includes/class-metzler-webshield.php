@@ -141,6 +141,23 @@ class Metzler_Webshield {
         return get_option( 'metzler_webshield_enable_telemetry', '0' ) === '1' && self::is_cloud_connected();
     }
 
+    /**
+     * True only when the API answered that the key is invalid. Network errors, timeouts, maintenance and
+     * server errors (5xx, 429, non-JSON pages) say nothing about the key: the site stays connected, otherwise
+     * an API outage would disconnect every site and turn telemetry off for good.
+     */
+    public static function license_rejected( $response ): bool {
+        if ( is_wp_error( $response ) ) {
+            return false;
+        }
+        $code = (int) wp_remote_retrieve_response_code( $response );
+        if ( $code < 400 || $code >= 500 || 429 === $code ) {
+            return false;
+        }
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        return is_array( $data ) && array_key_exists( 'success', $data ) && false === $data['success'];
+    }
+
     public function cron_verify_license(): void {
         if ( ! get_option( 'metzler_webshield_is_licensed' ) ) {
             return;
@@ -158,15 +175,17 @@ class Metzler_Webshield {
             'timeout' => 15
         ) );
 
-        if ( ! is_wp_error( $response ) ) {
-            $body = wp_remote_retrieve_body( $response );
-            $data = json_decode( $body, true );
+        if ( self::license_rejected( $response ) ) {
+            // Token is invalid/revoked! Lock the plugin.
+            delete_option( 'metzler_webshield_is_licensed' );
+            update_option( 'metzler_webshield_enable_telemetry', '0' );
+            return;
+        }
 
-            if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-                // Token is invalid/revoked! Lock the plugin.
-                delete_option( 'metzler_webshield_is_licensed' );
-                update_option( 'metzler_webshield_enable_telemetry', '0' );
-            } else {
+        if ( ! is_wp_error( $response ) ) {
+            $data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+            if ( ! empty( $data['success'] ) ) {
                 if ( isset( $data['tier'] ) ) {
                     $tier = sanitize_text_field( $data['tier'] );
                     update_option( 'metzler_webshield_license_tier', $tier );

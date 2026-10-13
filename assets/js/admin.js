@@ -752,6 +752,9 @@ jQuery(document).ready(function($) {
             if (res.success) {
                 feedback.css('color', 'green').text(metzler_webshield_ajax.i18n.license_valid);
                 setTimeout(function(){ location.reload(); }, 1200);
+            } else if (res.data && res.data.kept) {
+                // Cloud unreachable: still connected, nothing changed
+                showToast(res.data.message, 'error');
             } else {
                 showToast(metzler_webshield_ajax.i18n.license_invalid, 'error');
                 setTimeout(function(){ location.reload(); }, 2000);

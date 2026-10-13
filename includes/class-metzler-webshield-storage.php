@@ -173,7 +173,7 @@ class Metzler_Webshield_Storage {
     }
 
     /**
-     * Moves data out of the old, publicly downloadable files (<= 1.0.1) and deletes them.
+     * Moves data out of the file format of versions <= 1.0.1 and deletes the old files.
      */
     public static function migrate_legacy_files(): void {
         $dir = self::dir();

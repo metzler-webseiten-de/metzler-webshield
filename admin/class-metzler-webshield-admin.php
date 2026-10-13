@@ -21,7 +21,7 @@ class Metzler_Webshield_Admin {
         // 3. Admin sidebar menu icon sizing
         add_action( 'admin_head', array( $this, 'enqueue_admin_menu_styles' ) );
 
-        // 4. Pro subscribers upgrading from 1.x need the separate Pro add-on
+        // 4. Notice for Pro subscribers without the Pro add-on
         add_action( 'admin_notices', array( $this, 'render_pro_addon_notice' ) );
         add_action( 'wp_ajax_metzler_webshield_dismiss_pro_notice', array( $this, 'ajax_dismiss_pro_notice' ) );
     }
@@ -114,7 +114,6 @@ class Metzler_Webshield_Admin {
                 'read_error'         => __('Error reading files.', 'metzler-webshield'),
                 'request_error'      => __('Error during request.', 'metzler-webshield'),
                 'invalid_key'        => __('Invalid key.', 'metzler-webshield'),
-                // New UI states
                 'hero_secure'        => $ui_texts['hero_secure'],
                 'hero_guards_active' => $ui_texts['hero_guards_active'],
                 'hero_risks'         => __('Security risks detected!', 'metzler-webshield'),
@@ -583,7 +582,7 @@ class Metzler_Webshield_Admin {
     }
 
     /**
-     * Sites that held a Pro subscription in 1.x lost the Pro features with the split into Free + add-on.
+     * Points Pro subscribers to the Pro add-on when it is not installed.
      */
     public function render_pro_addon_notice(): void {
         if ( ! current_user_can( 'install_plugins' ) ) {

@@ -374,7 +374,7 @@ jQuery(document).ready(function($) {
                 btn.closest('td').append('<span style="color:green;"> ' + metzler_webshield_ajax.i18n.marked_safe + '</span>');
                 btn.siblings('.metzler-webshield-q-move').remove();
                 btn.remove();
-                fetchLogs(); // UI dynamisch aktualisieren
+                fetchLogs();
             }
         });
     });
@@ -417,7 +417,7 @@ jQuery(document).ready(function($) {
                 btn.siblings('.metzler-webshield-q-safe').remove();
                 btn.remove();
                 loadQuarantine();
-                fetchLogs(); // UI dynamisch aktualisieren
+                fetchLogs();
             } else {
                 showToast(response.data.message || metzler_webshield_ajax.i18n.move_error, 'error');
                 btn.text(metzler_webshield_ajax.i18n.move_to_quarantine);

@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # Builds the release ZIPs of Metzler Webshield into dist/:
-#   metzler-webshield-selfhosted.zip  with the self-hosted updater (Update URI) for metzler-webshield.de
+#   metzler-webshield-selfhosted.zip  with the self-hosted updater
 #   metzler-webshield-wporg.zip       for WordPress.org: updater file, Update URI header and @selfhosted blocks removed
-#
-# Switching to WordPress.org: once the plugin is live there, publish the wporg ZIP as the last self-hosted
-# release (PLUGIN_DOWNLOAD_URL). Sites update to it, lose the Update URI and get updates from WordPress.org.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

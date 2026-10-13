@@ -8,8 +8,7 @@ require_once dirname( __DIR__ ) . '/class-metzler-webshield-storage.php';
 /**
  * Optional cloud WAF rules for connected sites.
  *
- * The rule set is plain data (category => regex[]) delivered by the Threat Intelligence API. The API
- * decides the channel by the key: community keys receive rules with a 7-day delay, Pro keys in real time.
+ * The rule set is plain data (category => regex[]) delivered by the Threat Intelligence API.
  * The response is encrypted with the site's own key and only decrypted here, so it can't be read from the
  * web-reachable uploads directory.
  */

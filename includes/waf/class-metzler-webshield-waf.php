@@ -85,7 +85,7 @@ class Metzler_Webshield_WAF {
         $this->inspect_payload(self::unslash($_COOKIE), 'COOKIE');
         $this->inspect_json_body();
         
-        // Inspect Raw URIs (Crucial for pretty permalinks where $_GET is empty during MU phase)
+        // Inspect the raw URI (pretty permalinks carry parameters in the path, not in $_GET)
         if ( isset($_SERVER['REQUEST_URI']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $request_uri = self::unslash($_SERVER['REQUEST_URI']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $this->inspect_string( $request_uri, 'uri' );
@@ -95,7 +95,7 @@ class Metzler_Webshield_WAF {
             $this->inspect_string( self::unslash($_SERVER['QUERY_STRING']), 'uri' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         }
         
-        // Inspect User-Agent (Skip for loopback so internal curl requests like WP Amelia don't trigger Bad_Bots,
+        // Inspect User-Agent (skip for loopback so the site's own curl requests don't trigger Bad_Bots,
         // and for crawler files, which tools like curl may fetch)
         if ( ! $is_loopback && ! $is_crawler_file && isset($_SERVER['HTTP_USER_AGENT']) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
             $this->inspect_string( self::unslash($_SERVER['HTTP_USER_AGENT']), 'user_agent' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
@@ -277,9 +277,7 @@ class Metzler_Webshield_WAF {
     private function block_request( $category, $payload = '' ): void {
         $ip = Metzler_Webshield_Request::client_ip();
         
-        // WAF blocks are logged asynchronously via the telemetry buffer file to prevent MySQL crashing during DDoS.
-        
-        // Push 100% of Telemetry to local Batch File (Extremely Fast, NO API/DB overhead)
+        // Blocks go to the buffer file instead of the database, so a flood can't overload MySQL
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
         $request_method = $_SERVER['REQUEST_METHOD'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput

@@ -40,8 +40,6 @@ class Metzler_Webshield_Scanner_FIM {
             $whitelist = get_option( 'metzler_webshield_whitelist', array() );
             if ( ! is_array( $whitelist ) ) $whitelist = array();
 
-            // fetch all baseline hashes for this batch to save queries
-            // Actually, querying them one by one is slow. We query them all at once.
             for ( $i = $index; $i < $end; $i++ ) {
                 $file = $files[$i];
                 

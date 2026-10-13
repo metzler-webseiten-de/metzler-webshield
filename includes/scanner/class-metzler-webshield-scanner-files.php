@@ -16,9 +16,6 @@ class Metzler_Webshield_Scanner_Files {
             
             // 2. ABSPATH (Root directory, wp-admin, wp-includes complete)
             $root_dir = rtrim(ABSPATH, '/\\');
-            // To prevent timeouts when generating directory lists, we include root and 
-            // direct subfolders (heuristics work on file level).
-            // For maximum security, we actually scan everything completely (since FIM hashes drastically speed up the scan).
             $directories = array_merge($directories, $this->get_all_directories($root_dir));
             $directories[] = $root_dir;
             
@@ -44,7 +41,7 @@ class Metzler_Webshield_Scanner_Files {
             $bad_extensions = array('php', 'phtml', 'php5', 'sh', 'exe', 'pl', 'cgi');
             $bad_filenames = array('.user.ini', 'php.ini', 'web.config');
               
-              // Load WordPress Core Checksums to skip valid core files for massive performance boost
+              // Unmodified core files are skipped
               $core_checksums = get_transient( 'metzler_webshield_core_checksums' );
               if ( !is_array($core_checksums) ) $core_checksums = array();
               $whitelist = get_option( 'metzler_webshield_whitelist', array() );

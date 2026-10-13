@@ -322,7 +322,7 @@ class Metzler_Webshield_Updater {
 		if ( ! $force_check ) {
 			$cached = get_transient( $this->transient_key );
 			if ( false !== $cached && is_object( $cached ) ) {
-				// If we previously cached a network/Cloudflare failure, stay in backoff
+				// A recent failed check is cached as well, so retries are spaced out
 				if ( ! empty( $cached->error ) ) {
 					return false;
 				}
@@ -352,8 +352,7 @@ class Metzler_Webshield_Updater {
 			)
 		);
 
-		// If Cloudflare blocks (403/503/challenge) or network fails, apply negative caching
-		// with randomized jitter (2 to 3 hours) to prevent thundering herd / retry storms.
+		// On errors, wait 2 to 3 hours before the next check
 		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
 			$backoff = ( 2 * HOUR_IN_SECONDS ) + wp_rand( 0, 3600 );
 			set_transient( $this->transient_key, (object) array( 'error' => true, 'timestamp' => time() ), $backoff );
@@ -367,7 +366,7 @@ class Metzler_Webshield_Updater {
 			return false;
 		}
 
-		// Cache successful response for 6-8 hours with random jitter to distribute server load
+		// Cache the release info for 6 to 8 hours
 		$ttl = ( 6 * HOUR_IN_SECONDS ) + wp_rand( 0, 7200 );
 		set_transient( $this->transient_key, $body, $ttl );
 

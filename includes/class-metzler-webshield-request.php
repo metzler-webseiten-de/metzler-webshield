@@ -229,7 +229,7 @@ class Metzler_Webshield_Request {
             $ips[] = $server;
         }
 
-        // The DNS lookup of the own domain is cached, it used to run on every request
+        // The DNS lookup of the own domain is cached
         $cached = function_exists( 'get_transient' ) ? get_transient( 'mws_own_ips' ) : false;
         if ( is_array( $cached ) ) {
             $resolved = $cached;

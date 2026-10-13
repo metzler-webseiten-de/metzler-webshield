@@ -284,8 +284,6 @@ class Metzler_Webshield_Queue {
 
         Metzler_Webshield_Firewall_Setup::write_snapshot();
         
-        // WAF is enabled/disabled just by the option now. No mu-plugin installer needed.
-        
         wp_send_json_success();
     }
     

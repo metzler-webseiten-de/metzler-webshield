@@ -115,7 +115,7 @@ class Metzler_Webshield {
     }
 
     /**
-     * One-time upgrade from the self-hosted 1.x line.
+     * One-time upgrade from 1.x.
      */
     public static function maybe_migrate(): void {
         if ( version_compare( get_option( 'metzler_webshield_version', '1.0.0' ), '2.0.0', '>=' ) ) {
@@ -176,7 +176,7 @@ class Metzler_Webshield {
         ) );
 
         if ( self::license_rejected( $response ) ) {
-            // Token is invalid/revoked! Lock the plugin.
+            // The key is invalid or revoked: disconnect the site
             delete_option( 'metzler_webshield_is_licensed' );
             update_option( 'metzler_webshield_enable_telemetry', '0' );
             return;
@@ -222,7 +222,7 @@ class Metzler_Webshield {
             // Check if it is a standard WAF block log
             else if (preg_match('/WAF Block: \d+ attacks? from IP ([0-9a-fA-F:\.]+) \((.*?)\)/', $row->message, $matches)) {
                 $ip = $matches[1];
-                $attack_type = $matches[2]; // Can be multiple types comma separated, but good enough for history
+                $attack_type = $matches[2]; // May contain several comma-separated types
             }
             
             if (!$ip) continue;
@@ -248,7 +248,7 @@ class Metzler_Webshield {
 
         $telemetry_allowed = self::telemetry_allowed();
 
-        // One-time upload of previously logged blocks, covered by the opt-in text
+        // One-time upload of previously logged blocks
         if ( $telemetry_allowed && get_option('metzler_webshield_historical_telemetry_sent', '0') !== '1' ) {
             $this->sync_historical_telemetry();
             update_option('metzler_webshield_historical_telemetry_sent', '1');
@@ -279,7 +279,7 @@ class Metzler_Webshield {
             if ( $decoded ) {
                 $logs[] = $decoded;
                 
-                // Aggregate for UI: Group by IP (Skip Legacy/Historical and Brute_Force because they are already in the DB!)
+                // Group by IP for the local UI (historical and brute force entries are already in the database)
                 $ip = $decoded['ip_address'];
                 $type = $decoded['attack_type'];
                 $user_agent = isset($decoded['user_agent']) ? base64_decode($decoded['user_agent']) : '';
@@ -302,7 +302,7 @@ class Metzler_Webshield {
                     $logs = array();
                 }
             } else {
-                $logs = array(); // Clear logs, just consuming the file so it doesn't grow
+                $logs = array(); // Telemetry off: only empty the buffer file
             }
         }
 

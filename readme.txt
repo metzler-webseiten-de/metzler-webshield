@@ -3,7 +3,7 @@ Contributors: metzler-webseiten, metzlerwp
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -74,6 +74,10 @@ Only checksum requests to WordPress.org during scans and an anonymous request fo
 No. Since Metzler Webshield runs early, it typically blocks bad requests before they hit your cache.
 
 == Changelog ==
+
+= 2.0.2 =
+* Fixed: An outage or server error of the Threat Intelligence Cloud no longer disconnects the site and turns telemetry off. Only a key the API explicitly rejects disconnects it.
+* Changed: "Recheck connection" also fetches the current cloud firewall rules right away.
 
 = 2.0.1 =
 * Security: Clients can no longer pose as Googlebot or as the server itself with forged proxy headers (X-Forwarded-For, CF-Connecting-IP) to skip rate limiting. Forwarded IPs only earn exemptions when they come from Cloudflare or a reverse proxy in a private network.

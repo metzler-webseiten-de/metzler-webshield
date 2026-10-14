@@ -107,6 +107,12 @@ class Metzler_Webshield_Scanner_Plugins {
                             $full_relative = str_replace('\\', '/', $full_relative);
                             if ( in_array($full_relative, $whitelist, true) ) continue;
                             
+                            if ( Metzler_Webshield_Scanner_Files::is_protection_file( $local_file ) ) {
+                                /* translators: 1: plugin name, 2: file name */
+                                Metzler_Webshield_Logger::log(sprintf( __('Protection file created by the plugin (only restricts access): %1$s -> %2$s', 'metzler-webshield'), $name, esc_html($relative_path) ), "plugins", "info");
+                                continue;
+                            }
+                            
                             // Plugins generate stylesheets, scripts and images at runtime, only executable files are a threat
                             if ( ! Metzler_Webshield_Scanner_Core::is_executable_file( $relative_path ) ) {
                                 /* translators: 1: plugin name, 2: file name */

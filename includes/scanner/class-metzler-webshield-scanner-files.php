@@ -108,7 +108,7 @@ class Metzler_Webshield_Scanner_Files {
                                 $is_safe_dummy = false;
                                 if ( $basename === 'index.php' ) {
                                     $content = trim(file_get_contents($full_path));
-                                    $is_safe_dummy = $this->is_strictly_dummy_index($content);
+                                    $is_safe_dummy = self::is_strictly_dummy_index($content);
                                 }
                                 if ( ! $is_safe_dummy ) {
                                     $threat_found = true;
@@ -190,6 +190,24 @@ class Metzler_Webshield_Scanner_Files {
     }
     
     /**
+     * Files plugins create to lock down their own folders (backup storage, caches): a silent
+     * index.php, or .htaccess / web.config that only restrict access. Anything that enables PHP,
+     * grants access or rewrites requests does not qualify.
+     */
+    public static function is_protection_file( string $path ): bool {
+        $content = (string) @file_get_contents( $path ); // phpcs:ignore
+        switch ( strtolower( basename( $path ) ) ) {
+            case 'index.php':
+                return self::is_strictly_dummy_index( trim( $content ) );
+            case '.htaccess':
+                return ! preg_match( '/php_(flag|value|admin_flag|admin_value)|auto_(prepend|append)_file|(sethandler|addhandler|addtype|forcetype)\s+[^\n]*php|allow\s+from\s+all|require\s+all\s+granted|rewrite(rule|cond)/i', $content );
+            case 'web.config':
+                return ! preg_match( '/handler|rewrite|<allow\s/i', $content );
+        }
+        return false;
+    }
+
+    /**
      * The lock360 backdoor denies every PHP file and then allows only its own entry points,
      * which breaks the site while keeping the backdoor reachable. Hardening rules deny PHP
      * without re-allowing a whole list of file names.
@@ -260,7 +278,7 @@ class Metzler_Webshield_Scanner_Files {
      * or directory listing prevention headers (e.g., 404 Not Found),
      * with ZERO executable statements, functions, variables, or payloads.
      */
-    private function is_strictly_dummy_index( string $content ): bool {
+    public static function is_strictly_dummy_index( string $content ): bool {
         // Standard silence and directory protection files are strictly under 500 bytes
         if ( strlen( $content ) > 500 ) {
             return false;

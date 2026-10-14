@@ -60,6 +60,7 @@ foreach ( $metzler_webshield_options as $metzler_webshield_option ) {
 delete_transient( 'metzler_webshield_core_checksums' );
 delete_transient( 'metzler_webshield_core_checksums_en' );
 delete_transient( 'metzler_webshield_plugin_verified' );
+delete_transient( 'metzler_webshield_quarantine_cleanup' );
 delete_transient( 'metzler_webshield_global_stats' );
 delete_transient( 'mws_remote_update_info' );
 delete_metadata( 'user', 0, 'metzler_webshield_pro_notice_dismissed', '', true );

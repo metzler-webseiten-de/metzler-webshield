@@ -45,8 +45,15 @@ class Metzler_Webshield_Quarantine {
     }
     
     private function auto_cleanup(): void {
+        // Once a day instead of on every request
+        if ( get_transient( 'metzler_webshield_quarantine_cleanup' ) ) return;
+        
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_quarantine'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        
+        // On the first activation the plugin loads before the activation hook creates the table
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) !== $table_name ) return; // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        set_transient( 'metzler_webshield_quarantine_cleanup', 1, DAY_IN_SECONDS );
         
         $old_files = $wpdb->get_results($wpdb->prepare("SELECT * FROM $table_name WHERE time < %s", gmdate('Y-m-d H:i:s', strtotime('-30 days')))); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         

@@ -6,3 +6,4 @@ curl-user-agent.txt | wp-content/mw-e2e-dropin.php | (lock360) (wp-content/mw-e2
 uploads-php.txt | wp-content/uploads/mw-e2e/thumb.php | Executable code file in uploads directory. (wp-content/uploads/mw-e2e/thumb.php)
 allowlist.htaccess.txt | wp-content/uploads/mw-e2e-cache/.htaccess | (lock360 pattern). (wp-content/uploads/mw-e2e-cache/.htaccess)
 @append | wp-content/plugins/akismet/akismet.php | -> akismet.php
+php-handler.htaccess.txt | wp-content/plugins/akismet/views/mw-e2e/.htaccess | -> views/mw-e2e/.htaccess

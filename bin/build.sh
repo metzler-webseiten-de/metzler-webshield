@@ -17,7 +17,7 @@ copy_sources() {
     local target="$1/$SLUG"
     mkdir -p "$target"
     # Git-visible files only (tracked + new, not ignored), so local junk never ends up in a release
-    git -C "$ROOT" ls-files -z --cached --others --exclude-standard | grep -zv -e '^bin/' -e '^dist/' -e '^\.gitignore$' -e '^\.idea/' \
+    git -C "$ROOT" ls-files -z --cached --others --exclude-standard | grep -zv -e '^bin/' -e '^dist/' -e '^tests/' -e '^\.github/' -e '^\.gitignore$' -e '^\.idea/' \
         | (cd "$ROOT" && xargs -0 cp --parents -t "$target")
 }
 

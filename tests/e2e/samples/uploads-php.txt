@@ -1,0 +1,2 @@
+<?php
+// Metzler Webshield e2e sample (inert): PHP file in the uploads directory

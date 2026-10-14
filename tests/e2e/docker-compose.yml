@@ -1,0 +1,24 @@
+# Throwaway WordPress for the scanner end-to-end test, see run.sh
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_RANDOM_ROOT_PASSWORD: "1"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uwordpress", "-pwordpress"]
+      interval: 2s
+      retries: 90
+
+  cli:
+    image: wordpress:cli-php8.3
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../..:/src:ro
+    entrypoint: ["bash", "/src/tests/e2e/inside.sh"]

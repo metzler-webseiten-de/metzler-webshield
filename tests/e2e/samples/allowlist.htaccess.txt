@@ -1,0 +1,7 @@
+# Metzler Webshield e2e sample: deny all PHP, then re-allow a list of entry points
+<FilesMatch "\.(php|phtml)$">
+Require all denied
+</FilesMatch>
+<FilesMatch "^(e2e-alpha\.php|e2e-beta\.php|e2e-gamma\.php)$">
+Require all granted
+</FilesMatch>

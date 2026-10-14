@@ -1,0 +1,8 @@
+# sample | target path in the WordPress root | text the scan log has to contain
+# "@append" modifies the existing target file instead of copying a sample
+unknown-core-file.txt | wp-includes/js/mw-e2e/index.php | Unknown file in WordPress core directory: wp-includes/js/mw-e2e/index.php
+split-filenames.txt | wp-content/plugins/mw-e2e-cache/loader.php | (lock360 backdoor) (wp-content/plugins/mw-e2e-cache/loader.php)
+curl-user-agent.txt | wp-content/mw-e2e-dropin.php | (lock360) (wp-content/mw-e2e-dropin.php)
+uploads-php.txt | wp-content/uploads/mw-e2e/thumb.php | Executable code file in uploads directory. (wp-content/uploads/mw-e2e/thumb.php)
+allowlist.htaccess.txt | wp-content/uploads/mw-e2e-cache/.htaccess | (lock360 pattern). (wp-content/uploads/mw-e2e-cache/.htaccess)
+@append | wp-content/plugins/akismet/akismet.php | -> akismet.php

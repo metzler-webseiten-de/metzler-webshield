@@ -1,0 +1,3 @@
+<?php
+// Metzler Webshield e2e sample (inert): file names split into pieces to dodge simple string matching
+$e2e_names = array( '.' . 'htaccess', 'robots' . '.txt' );

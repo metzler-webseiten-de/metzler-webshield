@@ -1,0 +1,4 @@
+<?php
+// Metzler Webshield e2e sample (inert): one character cURL user agent as used by remote controlled backdoors
+$e2e_options = array( CURLOPT_USERAGENT => 'x' );
+if ( false ) { curl_setopt( $e2e_handle, CURLOPT_USERAGENT, 'x' ); }

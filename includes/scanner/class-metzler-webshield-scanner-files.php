@@ -200,6 +200,11 @@ class Metzler_Webshield_Scanner_Files {
             case 'index.php':
                 return self::is_strictly_dummy_index( trim( $content ) );
             case '.htaccess':
+                // Access granted only to non-executable files (e.g. <FilesMatch "\.log$">) is fine
+                $content = preg_replace_callback( '/<Files(?:Match)?\s+"?([^">]*)"?\s*>.*?<\/Files(?:Match)?>/is', function ( $block ) {
+                    $allows_code = preg_match( '/ph(p|t|ar)|\.\*|^\*$|^\.$/i', $block[1] );
+                    return $allows_code ? $block[0] : '';
+                }, $content );
                 return ! preg_match( '/php_(flag|value|admin_flag|admin_value)|auto_(prepend|append)_file|(sethandler|addhandler|addtype|forcetype)\s+[^\n]*php|allow\s+from\s+all|require\s+all\s+granted|rewrite(rule|cond)/i', $content );
             case 'web.config':
                 return ! preg_match( '/handler|rewrite|<allow\s/i', $content );
@@ -282,6 +287,11 @@ class Metzler_Webshield_Scanner_Files {
         // Standard silence and directory protection files are strictly under 500 bytes
         if ( strlen( $content ) > 500 ) {
             return false;
+        }
+
+        // Plain text without any opening tag is never executed (also no short tags like <? or <?=)
+        if ( strpos( $content, '<?' ) === false ) {
+            return true;
         }
 
         $tokens = token_get_all( $content );

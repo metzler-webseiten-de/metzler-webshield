@@ -62,29 +62,47 @@ class Metzler_Webshield_Queue {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         
-        $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-        
-        if ( ! $task ) {
-            Metzler_Webshield_Logger::log( __("Scan completed.", "metzler-webshield"), "system", "success");
-            update_option('metzler_webshield_last_scan', current_time('mysql'));
-            wp_send_json_success(array('status' => 'complete', 'message' => __('Scan completed', 'metzler-webshield')));
-        }
-
-        $result = self::run_task( $task );
-
-        if ( isset($result['complete']) && $result['complete'] ) {
-            $wpdb->update($table_name, array('status' => 'completed'), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-        } else {
-            if ( isset($result['next_payload']) ) {
-                $wpdb->update($table_name, array('payload' => json_encode($result['next_payload'])), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+        // As many steps as fit into the time budget, each request boots WordPress once instead of once per step
+        $started = microtime(true);
+        $budget = self::request_budget();
+        do {
+            $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+            
+            if ( ! $task ) {
+                Metzler_Webshield_Storage::delete_scan_lists();
+                Metzler_Webshield_Logger::log( __("Scan completed.", "metzler-webshield"), "system", "success");
+                update_option('metzler_webshield_last_scan', current_time('mysql'));
+                wp_send_json_success(array('status' => 'complete', 'message' => __('Scan completed', 'metzler-webshield')));
             }
-        }
+            
+            $result = self::run_task( $task );
+            self::save_result( $task, $result );
+        } while ( microtime(true) - $started < $budget );
         
         wp_send_json_success(array(
             'status' => 'processing',
             'task' => $task->task_type,
             'message' => $result['message'] ?? 'Processing...'
         ));
+    }
+    
+    /**
+     * Seconds of scan work per AJAX request, well below max_execution_time and proxy timeouts.
+     */
+    private static function request_budget(): float {
+        $limit = (int) ini_get('max_execution_time');
+        return $limit > 0 ? min(4.0, $limit / 4) : 4.0;
+    }
+    
+    private static function save_result( $task, array $result ): void {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        
+        if ( isset($result['complete']) && $result['complete'] ) {
+            $wpdb->update($table_name, array('status' => 'completed'), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+        } elseif ( isset($result['next_payload']) ) {
+            $wpdb->update($table_name, array('payload' => json_encode($result['next_payload'])), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+        }
     }
     
     public function ajax_get_logs(): void {
@@ -159,6 +177,7 @@ class Metzler_Webshield_Queue {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
         $wpdb->query("TRUNCATE TABLE $table_name"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        Metzler_Webshield_Storage::delete_scan_lists();
         Metzler_Webshield_Logger::log(__("The Smart Scan was aborted by the user.", "metzler-webshield"), "system", "warning");
         wp_send_json_success();
     }
@@ -292,6 +311,7 @@ class Metzler_Webshield_Queue {
      * metzler_webshield_scan_tasks filter and execute them via metzler_webshield_run_scan_task.
      */
     private static function enqueue_tasks(): void {
+        Metzler_Webshield_Storage::delete_scan_lists();
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
 
@@ -381,20 +401,14 @@ class Metzler_Webshield_Queue {
             
             $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
             if ( ! $task ) {
+                Metzler_Webshield_Storage::delete_scan_lists();
                 update_option('metzler_webshield_last_scan', current_time('mysql'));
                 Metzler_Webshield_Logger::log(__("Automatic background scan completed successfully.", "metzler-webshield"), "system", "success" );
                 break;
             }
             
             $result = self::run_task( $task );
-
-            if ( isset($result['complete']) && $result['complete'] ) {
-                $wpdb->update($table_name, array('status' => 'completed'), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-            } else {
-                if ( isset($result['next_payload']) ) {
-                    $wpdb->update($table_name, array('payload' => json_encode($result['next_payload'])), array('id' => $task->id)); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
-                }
-            }
+            self::save_result( $task, $result );
         }
     }
 }

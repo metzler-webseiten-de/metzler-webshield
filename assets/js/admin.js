@@ -202,13 +202,14 @@ jQuery(document).ready(function($) {
                     currentModule = response.data.task;
                     updateScanStage(currentModule);
                     
+                    // Requests now carry several seconds of work each, so the bar approaches 95% instead of stepping 2%
                     let w = parseInt($('#scan-progress-fill').css('width')) / $('#scan-progress-fill').parent().width() * 100;
-                    if (w < 95) $('#scan-progress-fill').css('width', (w + 2) + '%');
+                    if (w < 95) $('#scan-progress-fill').css('width', (w + (95 - w) * 0.15) + '%');
                     
                     $('#scan-eta').hide();
 
                     fetchLogs();
-                    setTimeout(processQueue, 300);
+                    processQueue();
                 } else if (response.data.status === 'complete') {
                     finishScan();
                 }

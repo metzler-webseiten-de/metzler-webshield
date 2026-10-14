@@ -18,19 +18,23 @@ class Metzler_Webshield_Scanner_FIM {
             
             new Metzler_Webshield_FIM();
 
+            $files = $this->get_all_php_files(WP_CONTENT_DIR);
+            $next_payload = array('step' => 'process', 'index' => 0);
+            // Without a writable storage directory the list travels in the payload
+            if ( ! Metzler_Webshield_Storage::save_scan_list( 'fim', $files ) ) {
+                $next_payload['files'] = $files;
+            }
+
             return array(
                 'complete' => false,
-                'next_payload' => array('step' => 'process', 'index' => 0),
+                'next_payload' => $next_payload,
                 'message' => __('FIM scanner running...', 'metzler-webshield')
             );
         }
         
         if ( $step === 'process' ) {
-            global $wpdb;
-            $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
-            
-            $wp_content = WP_CONTENT_DIR;
-            $files = $this->get_all_php_files($wp_content);
+            $files = $payload['files'] ?? Metzler_Webshield_Storage::load_scan_list( 'fim' );
+            $baseline = $this->load_baseline();
             $index = isset($payload['index']) ? intval($payload['index']) : 0;
             $batch_size = 200; 
             
@@ -56,15 +60,15 @@ class Metzler_Webshield_Scanner_FIM {
                 $actual_hash = md5_file($file);
                 $path_hash   = md5($relative_path);
                 
-                $baseline_row = $wpdb->get_row($wpdb->prepare("SELECT file_hash FROM $table_name WHERE path_hash = %s OR file_path = %s LIMIT 1", $path_hash, $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+                $baseline_hash = $baseline['hash'][$path_hash] ?? $baseline['path'][$relative_path] ?? null;
                 
-                if ( ! $baseline_row ) {
+                if ( $baseline_hash === null ) {
                     // File is new!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
                     /* translators: 1: file path, 2: action buttons */
                     Metzler_Webshield_Logger::log(sprintf( __('FIM Alert: New, unknown file found -> %1$s%2$s', 'metzler-webshield'), esc_html($relative_path), $actions ), "system", "error");
-                } else if ( $baseline_row->file_hash !== $actual_hash ) {
+                } else if ( $baseline_hash !== $actual_hash ) {
                     // File is modified!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
@@ -81,13 +85,36 @@ class Metzler_Webshield_Scanner_FIM {
             
             return array(
                 'complete' => false,
-                'next_payload' => array('step' => 'process', 'index' => $end),
+                'next_payload' => isset($payload['files']) ? array('step' => 'process', 'files' => $files, 'index' => $end) : array('step' => 'process', 'index' => $end),
                 /* translators: 1: current index, 2: total files */
                 'message' => sprintf(__('FIM scan (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
         }
         
         return array('complete' => true);
+    }
+    
+    /**
+     * The whole baseline in one query instead of one query per file. Rows from before
+     * path_hash existed are matched by their path.
+     */
+    private function load_baseline(): array {
+        static $baseline = null;
+        if ( $baseline !== null ) return $baseline;
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        $rows = $wpdb->get_results("SELECT path_hash, file_path, file_hash FROM $table_name", ARRAY_A) ?: array(); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        
+        $baseline = array('hash' => array(), 'path' => array());
+        foreach ( $rows as $row ) {
+            if ( $row['path_hash'] !== '' ) {
+                $baseline['hash'][$row['path_hash']] = $row['file_hash'];
+            } else {
+                $baseline['path'][$row['file_path']] = $row['file_hash'];
+            }
+        }
+        return $baseline;
     }
     
     private function get_all_php_files($base): array {

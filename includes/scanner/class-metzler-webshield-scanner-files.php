@@ -7,29 +7,32 @@ class Metzler_Webshield_Scanner_Files {
         if ( $step === 'init' ) {
             Metzler_Webshield_Logger::log(__("Starting heuristic malware search (complete file system scan)...", "metzler-webshield"), "files" );
             
-            $directories = array();
-            
-            // 1. wp-content (Plugins, Themes, Uploads, mu-plugins, etc. complete)
-            $content_dir = WP_CONTENT_DIR;
-            $directories = array_merge($directories, $this->get_all_directories($content_dir));
-            $directories[] = $content_dir;
-            
-            // 2. ABSPATH (Root directory, wp-admin, wp-includes complete)
+            // ABSPATH covers wp-admin, wp-includes and usually wp-content, which only needs its own walk when it lives elsewhere
             $root_dir = rtrim(ABSPATH, '/\\');
-            $directories = array_merge($directories, $this->get_all_directories($root_dir));
+            $content_dir = rtrim(WP_CONTENT_DIR, '/\\');
+            $directories = $this->get_all_directories($root_dir);
             $directories[] = $root_dir;
+            if ( ! str_starts_with( wp_normalize_path($content_dir) . '/', wp_normalize_path($root_dir) . '/' ) ) {
+                $directories = array_merge($directories, $this->get_all_directories($content_dir));
+                $directories[] = $content_dir;
+            }
             
-            $directories = array_unique($directories);
+            $directories = array_values(array_unique($directories));
+            $next_payload = array('step' => 'process', 'index' => 0);
+            // Without a writable storage directory the list travels in the payload
+            if ( ! Metzler_Webshield_Storage::save_scan_list( 'directories', $directories ) ) {
+                $next_payload['directories'] = $directories;
+            }
             
             return array(
                 'complete' => false,
-                'next_payload' => array('step' => 'process', 'directories' => array_values($directories), 'index' => 0),
+                'next_payload' => $next_payload,
                 'message' => 'Scanning file system...'
             );
         }
         
         if ( $step === 'process' ) {
-            $directories = $payload['directories'] ?? array();
+            $directories = $payload['directories'] ?? Metzler_Webshield_Storage::load_scan_list( 'directories' );
             $index = isset($payload['index']) ? intval($payload['index']) : 0;
             $batch_size = 20; 
             
@@ -41,9 +44,13 @@ class Metzler_Webshield_Scanner_Files {
             $bad_extensions = array('php', 'phtml', 'php5', 'sh', 'exe', 'pl', 'cgi');
             $bad_filenames = array('.user.ini', 'php.ini', 'web.config');
               
-              // Unmodified core files are skipped
+              // Core and plugin files that match the official wp.org checksums are skipped
               $core_checksums = get_transient( 'metzler_webshield_core_checksums' );
               if ( !is_array($core_checksums) ) $core_checksums = array();
+              $core_checksums_en = get_transient( 'metzler_webshield_core_checksums_en' );
+              if ( !is_array($core_checksums_en) ) $core_checksums_en = array();
+              $plugin_verified = get_transient( 'metzler_webshield_plugin_verified' );
+              if ( !is_array($plugin_verified) ) $plugin_verified = array();
               $whitelist = get_option( 'metzler_webshield_whitelist', array() );
               if ( !is_array($whitelist) ) $whitelist = array();
             
@@ -65,7 +72,10 @@ class Metzler_Webshield_Scanner_Files {
                 '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => __('Hidden variable-function injection', 'metzler-webshield'),
                 '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => __('Direct POST payload execution', 'metzler-webshield'), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
                 'assert\s*\(\s*\\$_' => __('Assert injection (PHP <= 7.1)', 'metzler-webshield'),
-                'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => __('Compressed Base64 backdoor', 'metzler-webshield')
+                'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => __('Compressed Base64 backdoor', 'metzler-webshield'),
+                // 3. Campaign signatures (lock360 backdoor)
+                '["\'][.]["\']\s*[.]\s*["\']ht[a]ccess["\']|["\']robots["\']\s*[.]\s*["\'][.]txt["\']' => __('Split .htaccess/robots.txt file name to evade scanners (lock360 backdoor)', 'metzler-webshield'),
+                'CURLOPT_USERAGENT\s*,\s*["\'][a-z0-9]["\']\s*\)' => __('Single character cURL user agent of a remote controlled backdoor (lock360)', 'metzler-webshield')
             );
             
             for ( $i = $index; $i < $end; $i++ ) {
@@ -116,6 +126,9 @@ class Metzler_Webshield_Scanner_Files {
                                  preg_match('/(sethandler|addhandler|addtype)\s+[^>\n]*php/i', $content) ) {
                                 $threat_found = true;
                                 $threat_reason = __('Dangerous PHP activation in .htaccess file.', 'metzler-webshield');
+                            } elseif ( $this->is_backdoor_allowlist_htaccess( $content ) ) {
+                                $threat_found = true;
+                                $threat_reason = __('.htaccess blocks all PHP files except a list of backdoor names (lock360 pattern).', 'metzler-webshield');
                             }
                         }
                         if ( !$threat_found && ( $basename === '.user.ini' || $basename === 'php.ini' ) ) {
@@ -133,7 +146,7 @@ class Metzler_Webshield_Scanner_Files {
                         }
                         
                         // Rule 3: Scan PHP files (anywhere) for malware heuristics
-                        if ( !$threat_found && in_array($ext, array('php', 'phtml', 'php5')) ) {
+                        if ( !$threat_found && in_array($ext, array('php', 'phtml', 'php5')) && ! $this->is_verified_original( $relative_path, $full_path, $core_checksums, $core_checksums_en, $plugin_verified ) ) {
                             
                             // Heuristic scan
                             $content = file_get_contents($full_path);
@@ -167,7 +180,7 @@ class Metzler_Webshield_Scanner_Files {
             
             return array(
                 'complete' => false,
-                'next_payload' => array('step' => 'process', 'directories' => $directories, 'index' => $end),
+                'next_payload' => isset($payload['directories']) ? array('step' => 'process', 'directories' => $directories, 'index' => $end) : array('step' => 'process', 'index' => $end),
                 /* translators: 1: current index, 2: total directories */
                 'message' => sprintf(__('Scanning directories (%1$d/%2$d)...', 'metzler-webshield'), $end, $total)
             );
@@ -176,6 +189,49 @@ class Metzler_Webshield_Scanner_Files {
         return array('complete' => true);
     }
     
+    /**
+     * The lock360 backdoor denies every PHP file and then allows only its own entry points,
+     * which breaks the site while keeping the backdoor reachable. Hardening rules deny PHP
+     * without re-allowing a whole list of file names.
+     */
+    private function is_backdoor_allowlist_htaccess( string $content ): bool {
+        if ( ! preg_match_all('/<FilesMatch\s+"([^"]*)"\s*>(.*?)<\/FilesMatch>/is', $content, $blocks, PREG_SET_ORDER) ) {
+            return false;
+        }
+        $denies_php = false;
+        $allowed_names = 0;
+        foreach ( $blocks as $block ) {
+            $is_deny  = (bool) preg_match('/deny\s+from\s+all|require\s+all\s+denied/i', $block[2]);
+            $is_allow = (bool) preg_match('/allow\s+from\s+all|require\s+all\s+granted/i', $block[2]);
+            if ( $is_deny && stripos($block[1], 'php') !== false && ! preg_match('/\.php\b.*\|/i', $block[1]) ) {
+                $denies_php = true;
+            }
+            if ( $is_allow ) {
+                $allowed_names = max( $allowed_names, preg_match_all('/[\w-]+(?:\\\\)?\.php/i', $block[1]) );
+            }
+        }
+        return $denies_php && $allowed_names >= 3;
+    }
+
+    private function is_verified_original( string $relative_path, string $full_path, array $core_checksums, array $core_checksums_en, array $plugin_verified ): bool {
+        $expected = array();
+        foreach ( array( $core_checksums, $core_checksums_en, $plugin_verified ) as $source ) {
+            if ( isset($source[$relative_path]) ) {
+                $expected[] = $source[$relative_path];
+            }
+        }
+        if ( empty($expected) ) {
+            return false;
+        }
+        $actual = md5_file($full_path);
+        foreach ( $expected as $hashes ) {
+            if ( Metzler_Webshield_Scanner_Core::hash_matches( $hashes, $actual ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function get_all_directories($base) {
         $dirs = array();
         if ( ! is_dir($base) ) return $dirs;

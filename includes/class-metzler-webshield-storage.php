@@ -152,6 +152,35 @@ class Metzler_Webshield_Storage {
         return $content;
     }
 
+    /**
+     * File lists of a running scan. Kept on disk instead of the queue payload, which is
+     * written back to the database after every step.
+     */
+    public static function save_scan_list( string $name, array $list ): bool {
+        self::ensure_dir( 'scan' );
+        $file = self::path( 'scan/' . $name . '.php' );
+        return @file_put_contents( $file, self::GUARD . json_encode( array_values( $list ) ), LOCK_EX ) !== false; // phpcs:ignore
+    }
+
+    public static function load_scan_list( string $name ): array {
+        static $cache = array();
+        $file = self::path( 'scan/' . $name . '.php' );
+        $key  = $file . '|' . @filemtime( $file ); // phpcs:ignore
+        if ( ! isset( $cache[ $key ] ) ) {
+            $list = json_decode( self::read_guarded( $file ), true );
+            $cache[ $key ] = is_array( $list ) ? $list : array();
+        }
+        return $cache[ $key ];
+    }
+
+    public static function delete_scan_lists(): void {
+        foreach ( (array) glob( self::path( 'scan/*.php' ) ) as $file ) {
+            if ( basename( $file ) !== 'index.php' ) {
+                @unlink( $file ); // phpcs:ignore
+            }
+        }
+    }
+
     public static function save_waf_key( string $token ): void {
         self::ensure_dir();
         self::write_guarded( self::path( self::WAF_KEY_FILE ), $token );

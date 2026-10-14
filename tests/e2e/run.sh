@@ -8,4 +8,5 @@ set -euo pipefail
 cd "$(dirname "$0")"
 trap 'docker compose down -v --remove-orphans >/dev/null 2>&1' EXIT
 
+docker compose pull --quiet
 docker compose run --rm cli

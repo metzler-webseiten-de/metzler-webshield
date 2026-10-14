@@ -5,6 +5,9 @@ set -euo pipefail
 E2E=/src/tests/e2e
 cd /var/www/html
 
+# The image runs WP-CLI with PHP's default 128 MB, too little to unpack WordPress and the big plugins
+wp() { php -d memory_limit=1G /usr/local/bin/wp "$@"; }
+
 # Popular plugins, including the kinds that write .htaccess, drop-ins or generated files
 ACTIVATE=(
     woocommerce elementor wpforms-lite contact-form-7 wordpress-seo updraftplus

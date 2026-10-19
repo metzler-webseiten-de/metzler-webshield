@@ -14,7 +14,13 @@ jQuery(document).ready(function($) {
     }
 
     // --- Clean Confirmation Modal ---
-    function showConfirm(message, onConfirm, title) {
+    function escapeHtml(text) {
+        return $('<div>').text(text == null ? '' : String(text)).html();
+    }
+
+    // options.note: show an optional text field, its value is passed to onConfirm
+    function showConfirm(message, onConfirm, title, options) {
+        options = options || {};
         title = title || (window.metzler_webshield_ajax && metzler_webshield_ajax.i18n && metzler_webshield_ajax.i18n.confirm_title ? metzler_webshield_ajax.i18n.confirm_title : 'Bestätigung erforderlich');
         let modal = $('#metzler-webshield-confirm-modal');
         if (modal.length === 0) {
@@ -23,6 +29,10 @@ jQuery(document).ready(function($) {
                     <div style="background:#fff; border-radius:6px; max-width:420px; width:90%; padding:22px 24px; box-shadow:0 8px 24px rgba(0,0,0,0.2); border:1px solid #c3c4c7; box-sizing:border-box;">
                         <h3 class="metzler-modal-title" style="margin:0 0 10px 0; font-size:15px; font-weight:600; color:#1d2327;"></h3>
                         <p class="metzler-modal-body" style="margin:0 0 20px 0; font-size:13px; color:#50575e; line-height:1.5;"></p>
+                        <label class="metzler-modal-note-wrap" style="display:none; margin:0 0 20px 0; font-size:13px; color:#1d2327;">
+                            <span class="metzler-modal-note-label" style="display:block; margin-bottom:6px;"></span>
+                            <textarea class="metzler-modal-note" rows="3" maxlength="500" style="width:100%; box-sizing:border-box;"></textarea>
+                        </label>
                         <div style="display:flex; justify-content:flex-end; gap:8px;">
                             <button type="button" class="button metzler-modal-cancel" style="min-height:30px;">Abbrechen</button>
                             <button type="button" class="button button-primary metzler-modal-confirm" style="min-height:30px;">Bestätigen</button>
@@ -33,11 +43,15 @@ jQuery(document).ready(function($) {
         }
         modal.find('.metzler-modal-title').text(title);
         modal.find('.metzler-modal-body').text(message);
+        modal.find('.metzler-modal-note').val('');
+        modal.find('.metzler-modal-note-label').text(options.noteLabel || '');
+        modal.find('.metzler-modal-note-wrap').toggle(!!options.note);
         modal.css('display', 'flex');
 
         modal.off('click', '.metzler-modal-confirm').on('click', '.metzler-modal-confirm', function() {
+            const note = modal.find('.metzler-modal-note').val();
             modal.hide();
-            if (typeof onConfirm === 'function') onConfirm();
+            if (typeof onConfirm === 'function') onConfirm(note);
         });
         modal.off('click', '.metzler-modal-cancel').on('click', '.metzler-modal-cancel', function() {
             modal.hide();
@@ -403,6 +417,53 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $(document).on('click', '.metzler-webshield-auto-submit', function(e) {
+        e.preventDefault();
+        const card = $('#metzler-webshield-auto-submit-card');
+        const choice = $(this).data('choice');
+        card.find('button').prop('disabled', true);
+        $.post(metzler_webshield_ajax.ajax_url, {
+            _wpnonce: metzler_webshield_ajax.nonce,
+            action: 'metzler_webshield_auto_submit_choice',
+            choice: choice
+        }, function(response) {
+            if (response.success) {
+                card.slideUp();
+                $('#metzler-webshield-setting-auto-submit').val(choice === 'once' ? 'ask' : choice);
+                if (choice !== 'never') showToast(metzler_webshield_ajax.i18n.auto_submit_started);
+            } else {
+                card.find('button').prop('disabled', false);
+            }
+        });
+    });
+
+    $(document).on('click', '.metzler-webshield-q-lab', function(e) {
+        e.preventDefault();
+        const btn = $(this);
+        const path = btn.data('path');
+        const i18n = metzler_webshield_ajax.i18n;
+        showConfirm(i18n.lab_confirm.replace('%s', path), function(note) {
+            btn.prop('disabled', true).text(i18n.lab_sending);
+            $.post(metzler_webshield_ajax.ajax_url, {
+                _wpnonce: metzler_webshield_ajax.nonce,
+                action: 'metzler_webshield_submit_sample',
+                path: path,
+                note: note || ''
+            }, function(response) {
+                if (response.success) {
+                    btn.replaceWith('<span class="metzler-webshield-lab-pending" style="color:#2271b1;"> ' + escapeHtml(i18n.lab_sent) + '</span>');
+                    fetchLogs();
+                } else {
+                    showToast((response.data && response.data.message) || i18n.lab_error, 'error');
+                    btn.prop('disabled', false).text(i18n.lab_send);
+                }
+            }).fail(function() {
+                showToast(i18n.lab_error, 'error');
+                btn.prop('disabled', false).text(i18n.lab_send);
+            });
+        }, i18n.lab_title, { note: true, noteLabel: i18n.lab_note });
+    });
+
     $(document).on('click', '.metzler-webshield-q-move', function(e) {
         e.preventDefault();
         const btn = $(this);
@@ -546,11 +607,14 @@ jQuery(document).ready(function($) {
                 
                 response.data.files.forEach(function(f) {
                     let html = '<tr>';
-                    html += '<td>' + f.time + '</td>';
-                    html += '<td>' + f.original_path + '</td>';
+                    html += '<td>' + escapeHtml(f.time) + '</td>';
+                    html += '<td>' + escapeHtml(f.original_path) + '</td>';
                     html += '<td>';
-                    html += '<button type="button" class="button button-small metzler-webshield-q-restore" data-id="' + f.id + '">' + metzler_webshield_ajax.i18n.restore + '</button> ';
-                    html += '<button type="button" class="button button-small metzler-webshield-q-delete" data-id="' + f.id + '" style="color:#d63638;">' + metzler_webshield_ajax.i18n.delete_permanent + '</button>';
+                    html += '<button type="button" class="button button-small metzler-webshield-q-restore" data-id="' + escapeHtml(f.id) + '">' + metzler_webshield_ajax.i18n.restore + '</button> ';
+                    html += '<button type="button" class="button button-small metzler-webshield-q-delete" data-id="' + escapeHtml(f.id) + '" style="color:#d63638;">' + metzler_webshield_ajax.i18n.delete_permanent + '</button>';
+                    if (metzler_webshield_ajax.lab_enabled) {
+                        html += ' <button type="button" class="button button-small metzler-webshield-q-lab" data-path="' + escapeHtml(f.original_path) + '">' + metzler_webshield_ajax.i18n.lab_send + '</button>';
+                    }
                     html += '</td></tr>';
                     tbody.append(html);
                 });
@@ -595,6 +659,7 @@ jQuery(document).ready(function($) {
         const ratelimitEnabled = $('#metzler-webshield-setting-ratelimit').is(':checked') ? '1' : '0';
         const underAttackEnabled = $('#metzler-webshield-setting-under-attack').is(':checked') ? '1' : '0';
         const telemetryEnabled = $('#metzler-webshield-setting-telemetry').is(':checked') ? '1' : '0';
+        const autoSubmit = $('#metzler-webshield-setting-auto-submit').val() || 'ask';
         btn.prop('disabled', true);
         
         $.post(metzler_webshield_ajax.ajax_url, {
@@ -609,7 +674,8 @@ jQuery(document).ready(function($) {
             disable_xmlrpc: xmlrpcDisabled,
             enable_ratelimit: ratelimitEnabled,
             under_attack_mode: underAttackEnabled,
-            enable_telemetry: telemetryEnabled
+            enable_telemetry: telemetryEnabled,
+            auto_submit: autoSubmit
         }, function(res) {
             btn.prop('disabled', false);
             if(res.success) {

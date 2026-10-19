@@ -18,6 +18,8 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-config.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-quarantine.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-findings.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-auto-submit.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/scanner/class-metzler-webshield-scanner-config.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/waf/class-metzler-webshield-waf.php';
@@ -72,6 +74,10 @@ class Metzler_Webshield {
         
         $fim = new Metzler_Webshield_FIM();
         $fim->init();
+
+        // Results of files sent to the lab, hourly together with the cloud rules
+        add_action( Metzler_Webshield_Cloud_Rules::SYNC_HOOK, array( 'Metzler_Webshield_Findings', 'sync_lab_status' ) );
+        add_action( Metzler_Webshield_Cloud_Rules::SYNC_HOOK, array( 'Metzler_Webshield_Auto_Submit', 'run' ) );
         
         $quarantine = new Metzler_Webshield_Quarantine();
         $quarantine->init();
@@ -253,6 +259,10 @@ class Metzler_Webshield {
             $this->sync_historical_telemetry();
             update_option('metzler_webshield_historical_telemetry_sent', '1');
         }
+        if ( $telemetry_allowed ) {
+            Metzler_Webshield_Findings::sync();
+        }
+
         $telemetry_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::TELEMETRY_FILE);
         $processing_file = Metzler_Webshield_Storage::path(Metzler_Webshield_Storage::PROCESSING_FILE);
 
@@ -330,23 +340,31 @@ class Metzler_Webshield {
     }
 
     private function send_telemetry_batch( $logs ): void {
+        self::post_signed( '/telemetry/waf/batch', array('logs' => $logs) );
+    }
+
+    /**
+     * JSON POST to the Threat Intelligence API, authenticated with the key and signed with it.
+     */
+    public static function post_signed( string $endpoint, array $payload, int $timeout = 15 ) {
         $api_url = defined( 'METZLER_WEBSHIELD_API_URL' ) ? METZLER_WEBSHIELD_API_URL : 'https://api.metzler-webshield.de/api';
         $token = get_option('metzler_webshield_license_token', '');
         if ( $token === '' ) {
-            return;
+            return new WP_Error( 'metzler_webshield_not_connected', 'Not connected.' );
         }
         
-        $payload_json = json_encode(array('logs' => $logs));
+        $payload_json = json_encode($payload);
         $signature = hash_hmac('sha256', $payload_json, $token);
         
-        wp_remote_post( $api_url . '/telemetry/waf/batch', array(
+        return wp_remote_post( $api_url . $endpoint, array(
             'blocking' => true,
-            'timeout'  => 15,
+            'timeout'  => $timeout,
             'body'     => $payload_json,
             'headers'  => array(
-                'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $token,
-                'X-Signature'   => $signature
+                'Content-Type'        => 'application/json',
+                'Authorization'       => 'Bearer ' . $token,
+                'X-Signature'         => $signature,
+                'X-Webshield-Version' => METZLER_WEBSHIELD_VERSION
             )
         ) );
     }
@@ -399,10 +417,12 @@ class Metzler_Webshield {
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-queue.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-fim.php';
         require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-quarantine.php';
+        require_once METZLER_WEBSHIELD_PLUGIN_DIR . 'includes/class-metzler-webshield-findings.php';
         Metzler_Webshield_Logger::create_table();
         Metzler_Webshield_Queue::create_table();
         Metzler_Webshield_FIM::create_table();
         Metzler_Webshield_Quarantine::create_table();
+        Metzler_Webshield_Findings::create_table();
         
         // Auto-Enable WAF on activation
         if ( get_option('metzler_webshield_enable_waf', false) === false ) {

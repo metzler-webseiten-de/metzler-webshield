@@ -191,6 +191,27 @@ if ( ! defined( 'ABSPATH' ) ) exit;
         </div>
     </div>
 
+    <?php if ( Metzler_Webshield_Auto_Submit::should_ask() ) : $metzler_webshield_pending = Metzler_Webshield_Auto_Submit::pending(); ?>
+    <div id="metzler-webshield-auto-submit-card" class="metzler-webshield-postbox" style="margin-bottom:20px;">
+        <h3 style="margin-top:0;"><?php echo esc_html( sprintf( /* translators: %d: number of files */ _n( '%d file is unknown', '%d files are unknown', $metzler_webshield_pending['count'], 'metzler-webshield' ), $metzler_webshield_pending['count'] ) ); ?></h3>
+        <p><?php echo esc_html__("These files are neither on WordPress.org nor in the Metzler Webshield database (e.g. from premium plugins). Do you want to send them for analysis? This helps to avoid false alarms and to detect new malware. File content, hash, size and the path relative to the WordPress directory are sent, never files from the uploads folder.", "metzler-webshield"); ?></p>
+        <details style="margin-bottom:12px;">
+            <summary><?php echo esc_html__("Show files", "metzler-webshield"); ?></summary>
+            <ul style="margin:8px 0 0 18px; list-style:disc;">
+                <?php foreach ( $metzler_webshield_pending['files'] as $metzler_webshield_file ) : ?>
+                    <li><code style="word-break:break-all;"><?php echo esc_html( $metzler_webshield_file ); ?></code></li>
+                <?php endforeach; ?>
+                <?php if ( $metzler_webshield_pending['count'] > count( $metzler_webshield_pending['files'] ) ) : ?>
+                    <li><?php echo esc_html( sprintf( /* translators: %d: number of further files */ __( 'and %d more', 'metzler-webshield' ), $metzler_webshield_pending['count'] - count( $metzler_webshield_pending['files'] ) ) ); ?></li>
+                <?php endif; ?>
+            </ul>
+        </details>
+        <button type="button" class="button button-primary metzler-webshield-auto-submit" data-choice="once"><?php echo esc_html__("Send this time", "metzler-webshield"); ?></button>
+        <button type="button" class="button metzler-webshield-auto-submit" data-choice="always"><?php echo esc_html__("Always send automatically", "metzler-webshield"); ?></button>
+        <button type="button" class="button button-link metzler-webshield-auto-submit" data-choice="never"><?php echo esc_html__("Do not send", "metzler-webshield"); ?></button>
+    </div>
+    <?php endif; ?>
+
     <!-- Reassurance Stats -->
     <div class="metzler-webshield-stats-bar">
         <div class="stat-item">
@@ -460,6 +481,9 @@ esc_html(sprintf(esc_html__('... and %d more (see log).', 'metzler-webshield'), 
                                     <td>
                                         <button type="button" class="button button-small metzler-webshield-q-restore" data-id="<?php echo esc_attr($metzler_webshield_q_file->id); ?>"><?php echo esc_html__("Restore", "metzler-webshield"); ?></button>
                                         <button type="button" class="button button-small button-link-delete metzler-webshield-q-delete" data-id="<?php echo esc_attr($metzler_webshield_q_file->id); ?>" style="color:#d63638; margin-left:10px;"><?php echo esc_html__("Delete", "metzler-webshield"); ?></button>
+                                        <?php if ( Metzler_Webshield::is_cloud_connected() ) : ?>
+                                            <button type="button" class="button button-small metzler-webshield-q-lab" data-path="<?php echo esc_attr($metzler_webshield_q_file->original_path); ?>"><?php echo esc_html__("Send for analysis", "metzler-webshield"); ?></button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -640,9 +664,23 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                                 <input type="checkbox" id="metzler-webshield-setting-telemetry" <?php echo get_option('metzler_webshield_enable_telemetry', '0') ? 'checked' : ''; ?>>
                                 <strong><?php echo esc_html__("Send attack data for network analysis (GDPR-compliant)", "metzler-webshield"); ?></strong>
                             </label>
-                            <p class="description"><?php echo esc_html__("Optional, off by default. When enabled, metadata of blocked requests (IP address, request URI, user agent, attack type and the matched payload) is sent to the Metzler Webshield Threat Intelligence API every 5 minutes, including blocks logged before you opted in. Cookies and authorization headers are never sent. Normal website visitors are not tracked.", "metzler-webshield"); ?></p>
+                            <p class="description"><?php echo esc_html__("Optional, off by default. When enabled, metadata of blocked requests (IP address, request URI, user agent, attack type and the matched payload) is sent to the Metzler Webshield Threat Intelligence API every 5 minutes, including blocks logged before you opted in. Cookies and authorization headers are never sent. Normal website visitors are not tracked. Files reported by the scanner are shared as SHA-256 hash, size, modification time, path relative to the WordPress directory, the rule that matched and whether you marked them as safe or moved them to quarantine, so false alarms can be fixed. File contents are never sent automatically.", "metzler-webshield"); ?></p>
                             <?php if (! $is_connected): ?>
                                 <p class="description" style="color:#996800;"><?php echo esc_html__("Requires a connection to the Threat Intelligence Cloud (see the \"Threat Cloud\" tab). Nothing is sent until the site is connected.", "metzler-webshield"); ?></p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__("Unknown files", "metzler-webshield"); ?></th>
+                        <td>
+                            <select id="metzler-webshield-setting-auto-submit">
+                                <?php foreach ( array( 'ask' => __( 'Ask me', 'metzler-webshield' ), 'always' => __( 'Always send automatically', 'metzler-webshield' ), 'never' => __( 'Never send', 'metzler-webshield' ) ) as $metzler_webshield_mode => $metzler_webshield_label ) : ?>
+                                    <option value="<?php echo esc_attr( $metzler_webshield_mode ); ?>" <?php selected( Metzler_Webshield_Auto_Submit::mode(), $metzler_webshield_mode ); ?>><?php echo esc_html( $metzler_webshield_label ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description"><?php echo esc_html__("PHP files of plugins and themes that are neither WordPress.org originals nor known to Metzler Webshield (e.g. premium plugins) can be sent for analysis. This helps to avoid false alarms and to detect new malware. Their hashes are compared first as part of telemetry sharing, contents are only sent for unknown files, at most 50 per day. Files from the uploads folder, configuration files and backups are never sent. Files sent in are deleted at the latest 90 days after they were received, unless sites still report them.", "metzler-webshield"); ?></p>
+                            <?php if ( ! Metzler_Webshield::telemetry_allowed() ) : ?>
+                                <p class="description" style="color:#996800;"><?php echo esc_html__("Requires telemetry sharing (see above) and a connection to the Threat Intelligence Cloud.", "metzler-webshield"); ?></p>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -748,7 +786,7 @@ sprintf(esc_html__("Currently in database baseline: %d files", "metzler-webshiel
                                     <br><br>
                                     <label>
                                         <input type="checkbox" id="metzler-webshield-license-telemetry" value="1">
-                                        <?php echo esc_html__("Share attack telemetry (optional): metadata of blocked requests, including previously logged blocks, is sent to the Threat Intelligence API. You can turn this off at any time in the settings.", "metzler-webshield"); ?>
+                                        <?php echo esc_html__("Share attack telemetry (optional): metadata of blocked requests, including previously logged blocks, and the hash, size and WordPress-relative path of files reported by the scanner are sent to the Threat Intelligence API. You can turn this off at any time in the settings.", "metzler-webshield"); ?>
                                     </label>
                                 </td>
                             </tr>

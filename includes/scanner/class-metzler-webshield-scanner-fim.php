@@ -66,14 +66,18 @@ class Metzler_Webshield_Scanner_FIM {
                     // File is new!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
+                    $actions .= Metzler_Webshield_Findings::lab_button( $relative_path );
                     /* translators: 1: file path, 2: action buttons */
                     Metzler_Webshield_Logger::log(sprintf( __('FIM Alert: New, unknown file found -> %1$s%2$s', 'metzler-webshield'), esc_html($relative_path), $actions ), "fim", "error");
+                    Metzler_Webshield_Findings::report( $relative_path, $file, 'fim', 'fim-new' );
                 } else if ( $baseline_hash !== $actual_hash ) {
                     // File is modified!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                     $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
+                    $actions .= Metzler_Webshield_Findings::lab_button( $relative_path );
                     /* translators: 1: file path, 2: action buttons */
                     Metzler_Webshield_Logger::log(sprintf( __('FIM Alert: File modified after snapshot -> %1$s%2$s', 'metzler-webshield'), esc_html($relative_path), $actions ), "fim", "error");
+                    Metzler_Webshield_Findings::report( $relative_path, $file, 'fim', 'fim-modified' );
                 }
             }
             

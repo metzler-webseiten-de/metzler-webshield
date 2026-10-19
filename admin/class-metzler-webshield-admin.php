@@ -81,7 +81,17 @@ class Metzler_Webshield_Admin {
         wp_localize_script( 'metzler-webshield-admin', 'metzler_webshield_ajax', array(
             'ajax_url'    => admin_url( 'admin-ajax.php' ),
             'nonce'       => wp_create_nonce( 'metzler_webshield_nonce' ),
+            'lab_enabled' => Metzler_Webshield::is_cloud_connected(),
             'i18n'        => array(
+                'lab_send'           => __('Send for analysis', 'metzler-webshield'),
+                'lab_title'          => __('Send file for analysis', 'metzler-webshield'),
+                /* translators: %s: file path */
+                'lab_confirm'        => __('The file %s is sent to Metzler Webshield for analysis. It may contain code or credentials. You receive the result by email to the address the key was requested with, and here in the log. Files sent in are deleted at the latest 90 days after the analysis.', 'metzler-webshield'),
+                'lab_note'           => __('Why are you unsure? (optional)', 'metzler-webshield'),
+                'lab_sending'        => __('Sending...', 'metzler-webshield'),
+                'lab_sent'           => __('Being analyzed', 'metzler-webshield'),
+                'lab_error'          => __('The file could not be sent.', 'metzler-webshield'),
+                'auto_submit_started' => __('The files are being sent, at most 50 per day.', 'metzler-webshield'),
                 'requesting'         => __('Requesting...', 'metzler-webshield'),
                 'request_key'        => __('Request Key', 'metzler-webshield'),
                 'enter_email'        => __('Please enter an email.', 'metzler-webshield'),

@@ -57,6 +57,12 @@ echo "::endgroup::"
 status=0
 wp eval-file "$E2E/check.php" clean || status=1
 
+# Pretend the site is connected with telemetry sharing on, so findings are recorded as shareable.
+# telemetry.php stubs the HTTP layer, nothing is sent to the real API.
+wp option update metzler_webshield_is_licensed 1 --quiet
+wp option update metzler_webshield_license_token e2e-test-key --quiet
+wp option update metzler_webshield_enable_telemetry 1 --quiet
+
 echo "::group::Plant samples and scan again"
 wp eval 'global $wpdb; $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}metzler_webshield_logs");'
 while IFS="|" read -r sample target expected; do
@@ -77,5 +83,8 @@ done < "$E2E/expected.txt"
 scan
 echo "::endgroup::"
 wp eval-file "$E2E/check.php" detect "$E2E/expected.txt" || status=1
+wp eval-file "$E2E/check.php" findings "$E2E/expected.txt" || status=1
+wp eval-file "$E2E/telemetry.php" || status=1
+wp eval-file "$E2E/lab.php" || status=1
 
 exit $status

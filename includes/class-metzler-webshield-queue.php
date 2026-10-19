@@ -33,6 +33,8 @@ class Metzler_Webshield_Queue {
         add_action( 'wp_ajax_metzler_webshield_cancel_scan', array( $this, 'ajax_cancel_scan' ) );
         add_action( 'wp_ajax_metzler_webshield_save_settings', array( $this, 'ajax_save_settings' ) );
         add_action( 'wp_ajax_metzler_webshield_delete_user', array( $this, 'ajax_delete_user' ) );
+        add_action( 'wp_ajax_metzler_webshield_submit_sample', array( $this, 'ajax_submit_sample' ) );
+        add_action( 'wp_ajax_metzler_webshield_auto_submit_choice', array( $this, 'ajax_auto_submit_choice' ) );
     }
 
     public function ajax_start_scan(): void
@@ -194,6 +196,18 @@ class Metzler_Webshield_Queue {
             wp_send_json_success();
         }
 
+        self::mark_safe( $path );
+        Metzler_Webshield_Findings::set_verdict( $path, 'safe' );
+        /* translators: %s: file path */
+        Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");
+        
+        wp_send_json_success();
+    }
+
+    /**
+     * Accepts a file: current hash into the FIM baseline, path on the whitelist, its warnings resolved.
+     */
+    public static function mark_safe( string $path ): void {
         $fim = new Metzler_Webshield_FIM();
         $fim->accept_file($path);
         
@@ -205,10 +219,29 @@ class Metzler_Webshield_Queue {
         }
         
         Metzler_Webshield_Logger::resolve_path_logs($path); // Delete old warnings
-        /* translators: %s: file path */
-        Metzler_Webshield_Logger::log(sprintf( __("File marked as safe: %s", "metzler-webshield"), esc_html($path) ), "system", "success");
+    }
+
+    public function ajax_auto_submit_choice(): void {
+        check_ajax_referer( 'metzler_webshield_nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die();
+        $choice = isset($_POST['choice']) ? sanitize_key( wp_unslash( $_POST['choice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        if ( ! in_array( $choice, array( 'once', 'always', 'never' ), true ) ) wp_send_json_error();
         
-        wp_send_json_success();
+        $sent = Metzler_Webshield_Auto_Submit::choose( $choice );
+        wp_send_json_success( array( 'sent' => $sent ) );
+    }
+
+    public function ajax_submit_sample(): void {
+        check_ajax_referer( 'metzler_webshield_nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die();
+        $path = isset($_POST['path']) ? sanitize_text_field( wp_unslash( $_POST['path'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        $note = isset($_POST['note']) ? sanitize_textarea_field( wp_unslash( $_POST['note'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        
+        $result = Metzler_Webshield_Findings::submit_sample( $path, $note );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+        wp_send_json_success( array( 'ticket' => $result ) );
     }
 
     public function ajax_delete_user(): void {
@@ -242,6 +275,7 @@ class Metzler_Webshield_Queue {
         $result = $quarantine->quarantine_file($path);
         
         if ( $result ) {
+            Metzler_Webshield_Findings::set_verdict( $path, 'quarantined' );
             Metzler_Webshield_Logger::resolve_path_logs($path); // Delete old warnings
             wp_send_json_success();
         } else {
@@ -255,7 +289,10 @@ class Metzler_Webshield_Queue {
         $id = isset($_POST['id']) ? intval($_POST['id']) : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         if ( $id > 0 ) {
             $q = new Metzler_Webshield_Quarantine();
+            $record = $q->get_file( $id );
             if ( $q->restore_file($id) ) {
+                // Restoring is the clearest sign that the finding was a false positive
+                if ( $record ) Metzler_Webshield_Findings::set_verdict( $record->original_path, 'restored' );
                 wp_send_json_success();
             }
         }
@@ -268,7 +305,9 @@ class Metzler_Webshield_Queue {
         $id = isset($_POST['id']) ? intval($_POST['id']) : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         if ( $id > 0 ) {
             $q = new Metzler_Webshield_Quarantine();
+            $record = $q->get_file( $id );
             if ( $q->delete_file($id) ) {
+                if ( $record ) Metzler_Webshield_Findings::set_verdict( $record->original_path, 'deleted' );
                 wp_send_json_success();
             }
         }
@@ -295,6 +334,7 @@ class Metzler_Webshield_Queue {
         $enable_ratelimit = isset($_POST['enable_ratelimit']) ? sanitize_text_field($_POST['enable_ratelimit']) : '1'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $under_attack_mode = isset($_POST['under_attack_mode']) ? sanitize_text_field($_POST['under_attack_mode']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $enable_telemetry = isset($_POST['enable_telemetry']) && sanitize_text_field($_POST['enable_telemetry']) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
+        $auto_submit = isset($_POST['auto_submit']) ? sanitize_key( wp_unslash( $_POST['auto_submit'] ) ) : Metzler_Webshield_Auto_Submit::mode(); // phpcs:ignore WordPress.Security.NonceVerification
         
         update_option('metzler_webshield_enable_fim', $enable_fim);
         update_option('metzler_webshield_enable_core', $enable_core);
@@ -306,6 +346,9 @@ class Metzler_Webshield_Queue {
         update_option('metzler_webshield_enable_rate_limiting', $enable_ratelimit);
         update_option('metzler_webshield_under_attack_mode', $under_attack_mode);
         update_option('metzler_webshield_enable_telemetry', $enable_telemetry);
+        if ( in_array( $auto_submit, Metzler_Webshield_Auto_Submit::MODES, true ) ) {
+            update_option( Metzler_Webshield_Auto_Submit::OPTION, $auto_submit );
+        }
 
         Metzler_Webshield_Firewall_Setup::write_snapshot();
         

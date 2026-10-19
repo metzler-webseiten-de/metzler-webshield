@@ -57,25 +57,25 @@ class Metzler_Webshield_Scanner_Files {
             // Malware Signatures (Heuristics) - Obfuscated in code to prevent self-detection (False Positive on scanner itself)
             $malware_patterns = array(
                 // 1. Generic Obfuscation & Dynamic Execution
-                '\\$[a-zA-Z-�][a-zA-Z0-9_-�]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)' => __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield'),
-                'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)' => __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield'),
-                '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))' => __('Dangerous system commands with user input', 'metzler-webshield'),
-                'file_put_contents\s*\([^;]*?,\s*base64_decode' => __('File Dropper heuristic (Base64 to file)', 'metzler-webshield'), // [^;] keeps the match inside one statement
-                'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode' => __('Gzuncompress/Base64 obfuscation', 'metzler-webshield'),
-                'preg_replace\s*\(\s*["\'\']\/(.*?)\/e["\'\']' => __('preg_replace /e code execution', 'metzler-webshield'),
-                'assert\s*\(\s*base64_decode' => __('Assert Base64 code execution', 'metzler-webshield'),
+                'dyn-exec-input' => array( '\\$[a-zA-Z-�][a-zA-Z0-9_-�]*\s*\(\s*\\$_(POST|GET|REQUEST|FILES)', __('Dynamic function execution with user input (Dropper heuristic)', 'metzler-webshield') ),
+                'rot13-static' => array( 'str_rot13\s*\(\s*["\'\']\w+["\'\']\s*\)', __('str_rot13 on static strings (Obfuscation heuristic)', 'metzler-webshield') ),
+                'system-cmd-input' => array( '(system|shell_exec|exec|passthru)\s*\(\s*(base64_decode|gzinflate|str_rot13|\\$_(POST|GET|REQUEST|COOKIE|HEADER))', __('Dangerous system commands with user input', 'metzler-webshield') ),
+                'dropper-base64-file' => array( 'file_put_contents\s*\([^;]*?,\s*base64_decode', __('File Dropper heuristic (Base64 to file)', 'metzler-webshield') ), // [^;] keeps the match inside one statement
+                'eval-gzuncompress-base64' => array( 'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode', __('Gzuncompress/Base64 obfuscation', 'metzler-webshield') ),
+                'preg-replace-e' => array( 'preg_replace\s*\(\s*["\'\']\/(.*?)\/e["\'\']', __('preg_replace /e code execution', 'metzler-webshield') ),
+                'assert-base64' => array( 'assert\s*\(\s*base64_decode', __('Assert Base64 code execution', 'metzler-webshield') ),
                 // 2. Legacy/Specific Signatures
-                'eval\s*\(\s*base64_decode\s*\(' => __('Base64-encoded backdoor (Dropper)', 'metzler-webshield'),
-                'preg_replace\s*\(\s*[\'"](.)(.*?)\\\\1[a-z]*e[a-z]*[\'"]' => __('Deprecated preg_replace injection (/e modifier)', 'metzler-webshield'),
-                'FilesM[a]n' => __('Web Shell signature (WSO/F-Man)', 'metzler-webshield'),
-                'b37[4]k' => __('Web Shell signature (b3-74k)', 'metzler-webshield'),
-                '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS' => __('Hidden variable-function injection', 'metzler-webshield'),
-                '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST' => __('Direct POST payload execution', 'metzler-webshield'), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-                'assert\s*\(\s*\\$_' => __('Assert injection (PHP <= 7.1)', 'metzler-webshield'),
-                'eval\s*\(\s*gzinflate\s*\(\s*base64_decode' => __('Compressed Base64 backdoor', 'metzler-webshield'),
+                'eval-base64' => array( 'eval\s*\(\s*base64_decode\s*\(', __('Base64-encoded backdoor (Dropper)', 'metzler-webshield') ),
+                'preg-replace-e-legacy' => array( 'preg_replace\s*\(\s*[\'"](.)(.*?)\\\\1[a-z]*e[a-z]*[\'"]', __('Deprecated preg_replace injection (/e modifier)', 'metzler-webshield') ),
+                'wso-shell' => array( 'FilesM[a]n', __('Web Shell signature (WSO/F-Man)', 'metzler-webshield') ),
+                'b3-74k-shell' => array( 'b37[4]k', __('Web Shell signature (b3-74k)', 'metzler-webshield') ),
+                'globals-var-func' => array( '\\$GLOBALS\\[\\w+\\]\s*\(\s*\\$GLOBALS', __('Hidden variable-function injection', 'metzler-webshield') ),
+                'post-payload-exec' => array( '\\$_POST\\[\\w+\\]\s*\(\s*\\$_POST', __('Direct POST payload execution', 'metzler-webshield') ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
+                'assert-input' => array( 'assert\s*\(\s*\\$_', __('Assert injection (PHP <= 7.1)', 'metzler-webshield') ),
+                'eval-gzinflate-base64' => array( 'eval\s*\(\s*gzinflate\s*\(\s*base64_decode', __('Compressed Base64 backdoor', 'metzler-webshield') ),
                 // 3. Campaign signatures (lock360 backdoor)
-                '["\'][.]["\']\s*[.]\s*["\']ht[a]ccess["\']|["\']robots["\']\s*[.]\s*["\'][.]txt["\']' => __('Split .htaccess/robots.txt file name to evade scanners (lock360 backdoor)', 'metzler-webshield'),
-                'CURLOPT_USERAGENT\s*,\s*["\'][a-z0-9]["\']\s*\)' => __('Single character cURL user agent of a remote controlled backdoor (lock360)', 'metzler-webshield')
+                'lock360-split-name' => array( '["\'][.]["\']\s*[.]\s*["\']ht[a]ccess["\']|["\']robots["\']\s*[.]\s*["\'][.]txt["\']', __('Split .htaccess/robots.txt file name to evade scanners (lock360 backdoor)', 'metzler-webshield') ),
+                'lock360-curl-ua' => array( 'CURLOPT_USERAGENT\s*,\s*["\'][a-z0-9]["\']\s*\)', __('Single character cURL user agent of a remote controlled backdoor (lock360)', 'metzler-webshield') )
             );
             
             for ( $i = $index; $i < $end; $i++ ) {
@@ -101,6 +101,7 @@ class Metzler_Webshield_Scanner_Files {
                         
                         $threat_found = false;
                         $threat_reason = '';
+                        $threat_rule = '';
                         
                         // Rule 1: No executable code files allowed in Uploads
                         if ( $is_in_uploads ) {
@@ -112,6 +113,7 @@ class Metzler_Webshield_Scanner_Files {
                                 }
                                 if ( ! $is_safe_dummy ) {
                                     $threat_found = true;
+                                    $threat_rule = 'uploads-exec';
                                     $threat_reason = __('Executable code file in uploads directory.', 'metzler-webshield');
                                 }
                             }
@@ -125,15 +127,18 @@ class Metzler_Webshield_Scanner_Files {
                                  Metzler_Webshield_Firewall_Setup::has_foreign_prepend( $content ) ||
                                  preg_match('/(sethandler|addhandler|addtype)\s+[^>\n]*php/i', $content) ) {
                                 $threat_found = true;
+                                $threat_rule = 'htaccess-php-handler';
                                 $threat_reason = __('Dangerous PHP activation in .htaccess file.', 'metzler-webshield');
                             } elseif ( $this->is_backdoor_allowlist_htaccess( $content ) ) {
                                 $threat_found = true;
+                                $threat_rule = 'htaccess-lock360';
                                 $threat_reason = __('.htaccess blocks all PHP files except a list of backdoor names (lock360 pattern).', 'metzler-webshield');
                             }
                         }
                         if ( !$threat_found && ( $basename === '.user.ini' || $basename === 'php.ini' ) ) {
                             if ( Metzler_Webshield_Firewall_Setup::has_foreign_prepend( (string) file_get_contents($full_path) ) ) {
                                 $threat_found = true;
+                                $threat_rule = 'ini-prepend';
                                 $threat_reason = __('PHP file injected into every request via auto_prepend_file.', 'metzler-webshield');
                             }
                         }
@@ -141,6 +146,7 @@ class Metzler_Webshield_Scanner_Files {
                             $content = strtolower(file_get_contents($full_path));
                             if ( str_contains( $content, 'php' ) && str_contains( $content, 'handler' ) ) {
                                 $threat_found = true;
+                                $threat_rule = 'webconfig-handler';
                                 $threat_reason = __('Dangerous handler in web.config file.', 'metzler-webshield');
                             }
                         }
@@ -150,10 +156,11 @@ class Metzler_Webshield_Scanner_Files {
                             
                             // Heuristic scan
                             $content = file_get_contents($full_path);
-                            foreach ( $malware_patterns as $pattern => $name ) {
-                                if ( preg_match('/' . $pattern . '/is', $content) ) {
+                            foreach ( $malware_patterns as $rule_id => $rule ) {
+                                if ( preg_match('/' . $rule[0] . '/is', $content) ) {
                                     $threat_found = true;
-                                    $threat_reason = __('Malware signature found:', 'metzler-webshield') . ' ' . $name;
+                                    $threat_rule = $rule_id;
+                                    $threat_reason = __('Malware signature found:', 'metzler-webshield') . ' ' . $rule[1];
                                     break;
                                 }
                             }
@@ -165,9 +172,11 @@ class Metzler_Webshield_Scanner_Files {
                             
                             $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';
                             $actions .= '<button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="'.esc_attr($relative_path).'" style="background:#d63638;border-color:#d63638;">' . esc_html__('Move to quarantine', 'metzler-webshield') . '</button>';
+                            $actions .= Metzler_Webshield_Findings::lab_button( $relative_path );
                             
                             /* translators: 1: threat reason, 2: file path, 3: action buttons */
                             Metzler_Webshield_Logger::log(sprintf( __('Critical: %1$s (%2$s)%3$s', 'metzler-webshield'), $threat_reason, $relative_path, $actions ), "files", "error");
+                            Metzler_Webshield_Findings::report( $relative_path, $full_path, 'files', $threat_rule );
                         }
                     }
                 }

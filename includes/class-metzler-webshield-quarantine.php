@@ -136,6 +136,26 @@ class Metzler_Webshield_Quarantine {
         return false;
     }
     
+    /**
+     * The most recent quarantine entry of a file whose content is still there.
+     */
+    public function find_by_path( string $relative_path ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_quarantine'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        $record = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE original_path = %s ORDER BY id DESC LIMIT 1", $relative_path)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        return ( $record && is_file( $this->path_of( $record ) ) ) ? $record : null;
+    }
+
+    public function path_of( $record ): string {
+        return $this->quarantine_dir . '/' . $record->quarantine_path;
+    }
+
+    public function get_file( int $id ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_quarantine'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+    }
+    
     public function get_files() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_quarantine'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter

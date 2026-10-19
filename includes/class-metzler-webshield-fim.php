@@ -34,7 +34,7 @@ class Metzler_Webshield_FIM {
     /**
      * Refreshes the baseline only for what the upgrader wrote. Rebuilding all of wp-content here would
      * accept every file planted since the last scan, and an install pushed with a leaked remote
-     * management key (UpdraftCentral, ManageWP, ...) would accept its own backdoor.
+     * management key would accept its own backdoor.
      */
     public function on_update_complete( $upgrader = null, $hook_extra = array() ): void {
         if ( ! get_option('metzler_webshield_fim_last_baseline') ) return; // The first scan builds the baseline

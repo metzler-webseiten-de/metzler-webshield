@@ -76,8 +76,8 @@ No. Since Metzler Webshield runs early, it typically blocks bad requests before 
 == Changelog ==
 
 = 2.0.6 =
-* Added: Every plugin or theme installation is reported with the user who installed it. Backdoor plugins installed through leaked remote management keys (e.g. UpdraftCentral) look exactly like a normal installation.
-* Added: The config scan reports users and roles other than administrator that can install, update or edit plugins, themes or core files, like the "editor" backdoor accounts of the UpdraftCentral campaign.
+* Added: Every plugin or theme installation is reported with the user who installed it. Backdoor plugins installed through leaked remote management keys look exactly like a normal installation.
+* Added: The config scan reports users and roles other than administrator that can install, update or edit plugins, themes or core files, like backdoor accounts that hide administrator rights behind the editor role.
 * Fixed: After an update, File Integrity Monitoring only refreshes its snapshot for the updated plugins, themes and language files instead of all of wp-content, which silently accepted every file planted since the last scan.
 
 = 2.0.5 =

@@ -10,5 +10,5 @@ php-handler.htaccess.txt | wp-content/plugins/akismet/views/mw-e2e/.htaccess | -
 fim-new-file.txt | wp-content/mw-e2e-new.php | New, unknown file found -> wp-content/mw-e2e-new.php
 # "@plugin-install" installs the plugin slug after the samples were planted, its install must not hide them from the FIM
 @plugin-install | hello-dolly | New plugin installed: wp-content/plugins/hello-dolly
-# "@user-cap" creates an editor that can install plugins, like the UpdraftCentral backdoor account
+# "@user-cap" creates an editor that can install plugins, like a backdoor account
 @user-cap | mw-e2e-tools | User 'mw-e2e-tools'

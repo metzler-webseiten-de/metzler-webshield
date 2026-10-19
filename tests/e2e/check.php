@@ -3,15 +3,18 @@
  * Evaluates the scan log, run with `wp eval-file check.php clean|detect <expected.txt>`.
  *
  * clean:  every warning or error is a false positive
- * detect: every line of expected.txt needs an error whose message contains its expected text
+ * detect: every line of expected.txt needs an active threat whose message contains its expected text,
+ *         counted like the dashboard does, so a finding the dashboard hides counts as not detected
  */
 global $wpdb;
 
 $mode = $args[0] ?? 'clean';
-$rows = $wpdb->get_results(
-    "SELECT type, severity, message FROM {$wpdb->prefix}metzler_webshield_logs
-     WHERE severity IN ('warning', 'error') AND type <> 'waf' ORDER BY id"
-);
+$rows = $mode === 'clean'
+    ? $wpdb->get_results(
+        "SELECT type, severity, message FROM {$wpdb->prefix}metzler_webshield_logs
+         WHERE severity IN ('warning', 'error') AND type <> 'waf' ORDER BY id"
+    )
+    : Metzler_Webshield_Logger::get_active_threats( 1000 );
 $messages = array_map( function ( $row ) {
     return sprintf( '[%s/%s] %s', $row->type, $row->severity, trim( preg_replace( '/<br>.*/s', '', $row->message ) ) );
 }, $rows );

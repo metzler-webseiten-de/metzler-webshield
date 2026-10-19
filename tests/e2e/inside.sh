@@ -5,6 +5,17 @@ set -euo pipefail
 E2E=/src/tests/e2e
 cd /var/www/html
 
+# The image ships the MariaDB client, which warns when WP-CLI calls it as mysql or mysqldump.
+# Wrappers under the old names start the new binaries, so the log only shows real problems.
+WRAPPERS=$(mktemp -d)
+for pair in mysql:mariadb mysqldump:mariadb-dump; do
+    if command -v "${pair#*:}" >/dev/null; then
+        printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v "${pair#*:}")" > "$WRAPPERS/${pair%%:*}"
+        chmod +x "$WRAPPERS/${pair%%:*}"
+    fi
+done
+export PATH="$WRAPPERS:$PATH"
+
 # The image runs WP-CLI with PHP's default 128 MB, too little to unpack WordPress and the big plugins
 wp() { php -d memory_limit=1G /usr/local/bin/wp "$@"; }
 

@@ -187,7 +187,13 @@ class Metzler_Webshield_Queue {
         if ( ! current_user_can( 'manage_options' ) ) wp_die();
         $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         if ( ! $path ) wp_send_json_error();
-        
+
+        // Acknowledged plugin or theme install, the baseline already covers its files
+        if ( str_starts_with( $path, 'install:' ) ) {
+            Metzler_Webshield_Logger::resolve_path_logs($path);
+            wp_send_json_success();
+        }
+
         $fim = new Metzler_Webshield_FIM();
         $fim->accept_file($path);
         
@@ -219,7 +225,7 @@ class Metzler_Webshield_Queue {
         require_once(ABSPATH.'wp-admin/includes/user.php');
         if ( wp_delete_user($user_id) ) {
             /* translators: %d: user id */
-            Metzler_Webshield_Logger::log(sprintf(__("Ghost Admin (ID %d) was successfully deleted.", "metzler-webshield"), $user_id), "config", "success");
+            Metzler_Webshield_Logger::log(sprintf(__("User (ID %d) was successfully deleted.", "metzler-webshield"), $user_id), "config", "success");
             wp_send_json_success();
         } else {
             wp_send_json_error(array('message' => __('Could not delete user.', 'metzler-webshield')));

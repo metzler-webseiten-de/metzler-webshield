@@ -93,7 +93,7 @@ class Metzler_Webshield_Admin {
                 'recheck_now'        => __('Recheck connection now', 'metzler-webshield'),
                 'delete_confirm'     => __('Are you sure you want to permanently delete this user?', 'metzler-webshield'),
                 'deleting'           => __('Deleting...', 'metzler-webshield'),
-                'deleted_ghost'      => __('Ghost Admin deleted!', 'metzler-webshield'),
+                'deleted_ghost'      => __('User deleted!', 'metzler-webshield'),
                 'delete_error'       => __('Error deleting user.', 'metzler-webshield'),
                 'delete_user'        => __('Delete user', 'metzler-webshield'),
                 'license_invalid'    => __('The key is invalid or expired. The cloud connection was disabled.', 'metzler-webshield'),

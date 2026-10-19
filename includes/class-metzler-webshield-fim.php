@@ -31,30 +31,131 @@ class Metzler_Webshield_FIM {
         add_action('upgrader_process_complete', array($this, 'on_update_complete'), 10, 2);
     }
 
-    public function on_update_complete(): void {
-        $this->build_baseline(); 
-        Metzler_Webshield_Logger::log( __("FIM Baseline was automatically updated after a WP update.", "metzler-webshield"), "system" );
+    /**
+     * Refreshes the baseline only for what the upgrader wrote. Rebuilding all of wp-content here would
+     * accept every file planted since the last scan, and an install pushed with a leaked remote
+     * management key (UpdraftCentral, ManageWP, ...) would accept its own backdoor.
+     */
+    public function on_update_complete( $upgrader = null, $hook_extra = array() ): void {
+        if ( ! get_option('metzler_webshield_fim_last_baseline') ) return; // The first scan builds the baseline
+
+        $hook_extra = is_array($hook_extra) ? $hook_extra : array();
+        $type = $hook_extra['type'] ?? '';
+        $paths = array();
+
+        if ( $type === 'plugin' || $type === 'theme' ) {
+            if ( ( $hook_extra['action'] ?? '' ) === 'install' ) {
+                $result = is_object($upgrader) && isset($upgrader->result) && is_array($upgrader->result) ? $upgrader->result : array();
+                if ( ! empty($result['destination']) ) {
+                    $paths[] = $result['destination'];
+                    $this->log_install( $type, $result['destination'] );
+                }
+            } else {
+                // Single updates pass 'plugin'/'theme', bulk updates 'plugins'/'themes'
+                foreach ( (array) ( $hook_extra[$type . 's'] ?? $hook_extra[$type] ?? array() ) as $item ) {
+                    if ( $type === 'plugin' ) {
+                        $paths[] = dirname($item) === '.' ? WP_PLUGIN_DIR . '/' . $item : WP_PLUGIN_DIR . '/' . dirname($item);
+                    } else {
+                        $paths[] = get_theme_root($item) . '/' . $item;
+                    }
+                }
+            }
+        } elseif ( $type === 'translation' ) {
+            $paths[] = WP_LANG_DIR;
+        } elseif ( $type === 'core' ) {
+            $paths[] = WP_LANG_DIR;
+            // Bundled themes and plugins a core update copies into wp-content, set by update-core.php
+            foreach ( array_keys( (array) ( $GLOBALS['_new_bundled_files'] ?? array() ) ) as $bundled ) {
+                $paths[] = WP_CONTENT_DIR . '/' . $bundled;
+            }
+        }
+
+        if ( $this->refresh_paths($paths) > 0 ) {
+            Metzler_Webshield_Logger::log( __("FIM Baseline was automatically updated for the updated components.", "metzler-webshield"), "system" );
+        }
+    }
+
+    /**
+     * Replaces the baseline rows below each path with the files that are there now.
+     * Whole plugin or theme roots are skipped, they would accept unrelated files.
+     */
+    private function refresh_paths( array $paths ): int {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+
+        $content = untrailingslashit(wp_normalize_path(WP_CONTENT_DIR));
+        $roots = array_map( function ( $dir ) {
+            return untrailingslashit(wp_normalize_path($dir));
+        }, array( WP_CONTENT_DIR, WP_PLUGIN_DIR, get_theme_root() ) );
+
+        $refreshed = 0;
+        foreach ( array_unique($paths) as $path ) {
+            $path = untrailingslashit(wp_normalize_path($path));
+            if ( in_array($path, $roots, true) || ! str_starts_with($path, $content . '/') ) continue;
+
+            $relative = self::relative_path($path);
+            // Rows of files the update removed or replaced
+            $wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE file_path = %s OR file_path LIKE %s", $relative, $wpdb->esc_like($relative) . '/%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+
+            $files = is_dir($path) ? $this->get_all_php_files($path) : array();
+            if ( is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'php' ) {
+                $files[] = $path;
+            }
+            foreach ( $files as $file ) {
+                $file_relative = self::relative_path($file);
+                $wpdb->replace($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
+                    'path_hash'  => md5($file_relative),
+                    'file_path'  => $file_relative,
+                    'file_hash'  => md5_file($file),
+                    'updated_at' => current_time('mysql')
+                ));
+            }
+            $refreshed++;
+        }
+        return $refreshed;
+    }
+
+    /**
+     * A legitimate install looks the same as one pushed by an attacker, so every install is reported.
+     */
+    private function log_install( string $type, string $destination ): void {
+        $relative = self::relative_path( untrailingslashit( wp_normalize_path($destination) ) );
+        $user = wp_get_current_user();
+        $by = $user->exists() ? $user->user_login : __('no logged-in user (cron, WP-CLI or remote request)', 'metzler-webshield');
+
+        $message = $type === 'theme'
+            /* translators: 1: theme directory, 2: user login */
+            ? sprintf( __('New theme installed: %1$s (by %2$s). If you did not install it yourself, check it immediately: remote management tools with leaked keys are used to install backdoors.', 'metzler-webshield'), esc_html($relative), esc_html($by) )
+            /* translators: 1: plugin directory, 2: user login */
+            : sprintf( __('New plugin installed: %1$s (by %2$s). If you did not install it yourself, check it immediately: remote management tools with leaked keys are used to install backdoors.', 'metzler-webshield'), esc_html($relative), esc_html($by) );
+        // The trailing slash keeps the token from matching other directories that start with the same name
+        $message .= '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="install:' . esc_attr($relative) . '/">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button>';
+
+        Metzler_Webshield_Logger::log( $message, "plugins", "warning" );
+    }
+
+    private static function relative_path( string $file ): string {
+        $normalized_file = wp_normalize_path($file);
+        $normalized_content = wp_normalize_path(WP_CONTENT_DIR);
+        return 'wp-content/' . ltrim(str_ireplace($normalized_content, '', $normalized_file), '/');
     }
 
     public function build_baseline(): int {
         self::create_table();
-        
+
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
-        
+
         $wp_content = WP_CONTENT_DIR;
         $files = $this->get_all_php_files($wp_content);
-        
+
         $wpdb->query("TRUNCATE TABLE $table_name"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-        
+
         $wpdb->query("START TRANSACTION"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
-        
+
         foreach ($files as $file) {
-            $normalized_file = wp_normalize_path($file);
-            $normalized_content = wp_normalize_path(WP_CONTENT_DIR);
-            $relative_to_content = ltrim(str_ireplace($normalized_content, '', $normalized_file), '/');
-            $relative_path = 'wp-content/' . $relative_to_content;
-            
+            $relative_path = self::relative_path($file);
+
             $wpdb->insert($table_name, array( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
                 'path_hash'  => md5($relative_path),
                 'file_path'  => $relative_path,

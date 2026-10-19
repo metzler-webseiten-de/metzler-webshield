@@ -1,0 +1,2 @@
+<?php
+// e2e: inert file that only the file integrity monitoring can notice

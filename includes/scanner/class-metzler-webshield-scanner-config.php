@@ -62,7 +62,10 @@ class Metzler_Webshield_Scanner_Config {
             } else {
                 Metzler_Webshield_Logger::log(__("Ghost Admin Check passed: No hidden administrators found.", "metzler-webshield"), "config", "success");
             }
-            
+
+            // 3.6 Administrator rights outside the administrator role
+            $this->check_privileged_non_admins();
+
             // 4. wp-config.php Permissions Check
             $config_path = ABSPATH . 'wp-config.php';
             if ( ! file_exists($config_path) ) {
@@ -85,5 +88,58 @@ class Metzler_Webshield_Scanner_Config {
         }
         
         return array('complete' => true);
+    }
+
+    /**
+     * Installing or editing code is reserved for administrators. Backdoor accounts get such rights
+     * under an inconspicuous role (e.g. an editor that can install plugins), so the role list stays clean.
+     */
+    private function check_privileged_non_admins(): void {
+        global $wpdb;
+        $critical = array(
+            'install_plugins', 'upload_plugins', 'activate_plugins', 'update_plugins', 'delete_plugins', 'edit_plugins',
+            'install_themes', 'upload_themes', 'update_themes', 'delete_themes', 'edit_themes', 'edit_files',
+            'update_core', 'unfiltered_upload'
+        );
+        $found = false;
+
+        // Roles besides administrator that grant these rights
+        $user_counts = null;
+        foreach ( wp_roles()->roles as $role => $data ) {
+            if ( $role === 'administrator' ) continue;
+            $granted = array_values( array_intersect( $critical, array_keys( array_filter( (array) ( $data['capabilities'] ?? array() ) ) ) ) );
+            if ( empty($granted) ) continue;
+
+            if ( $user_counts === null ) $user_counts = count_users();
+            $found = true;
+            /* translators: 1: role name, 2: capabilities, 3: number of users */
+            Metzler_Webshield_Logger::log(sprintf( __('Role \'%1$s\' grants administrator rights (%2$s) and has %3$d user(s). Unless a plugin you trust set this up on purpose, remove these rights from the role.', 'metzler-webshield'), esc_html($role), esc_html(implode(', ', $granted)), (int) ( $user_counts['avail_roles'][$role] ?? 0 ) ), "config", "warning");
+        }
+
+        // Rights assigned to single users, stored next to the roles in the capabilities meta
+        $conditions = array();
+        foreach ( $critical as $cap ) {
+            $conditions[] = $wpdb->prepare( 'meta_value LIKE %s', '%' . $wpdb->esc_like( '"' . $cap . '"' ) . '%' );
+        }
+        $meta_key = $wpdb->get_blog_prefix() . 'capabilities';
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $user_ids = $wpdb->get_col( $wpdb->prepare( "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = %s AND (" . implode( ' OR ', $conditions ) . ")", $meta_key ) );
+
+        foreach ( $user_ids as $user_id ) {
+            $user = get_userdata( (int) $user_id );
+            if ( ! $user || in_array( 'administrator', $user->roles, true ) || is_super_admin( $user->ID ) ) continue;
+            $granted = array_values( array_intersect( $critical, array_keys( array_filter( $user->caps ) ) ) );
+            if ( empty($granted) ) continue;
+
+            $found = true;
+            /* translators: 1: username, 2: user id, 3: roles, 4: capabilities */
+            $msg = sprintf( __('Critical: User \'%1$s\' (ID %2$d, role: %3$s) has administrator rights assigned directly (%4$s). Backdoor accounts created through leaked remote management keys look like this.', 'metzler-webshield'), esc_html($user->user_login), $user->ID, esc_html( implode(', ', $user->roles) ?: '-' ), esc_html(implode(', ', $granted)) );
+            $msg .= '<br><button type="button" class="button button-small button-primary metzler-webshield-delete-user" data-user-id="'.esc_attr($user->ID).'" style="background:#d63638;border-color:#d63638;">'.esc_html__('Delete user', 'metzler-webshield').'</button>';
+            Metzler_Webshield_Logger::log($msg, "config", "error");
+        }
+
+        if ( ! $found ) {
+            Metzler_Webshield_Logger::log(__("Rights check passed: Only administrators can install or edit plugins, themes and core files.", "metzler-webshield"), "config", "success");
+        }
     }
 }

@@ -85,7 +85,8 @@ while IFS="|" read -r sample target expected; do
     elif [[ "$sample" == "@plugin-install" ]]; then
         wp plugin install "$target" --quiet < /dev/null
     elif [[ "$sample" == "@user-cap" ]]; then
-        wp user create "$target" "$target@example.com" --role=editor --quiet < /dev/null
+        # A given password keeps WP-CLI from printing the generated one into the log
+        wp user create "$target" "$target@example.com" --role=editor --user_pass="$(head -c 18 /dev/urandom | base64)" --quiet < /dev/null
         wp user add-cap "$target" install_plugins < /dev/null
     else
         cp "$E2E/samples/$sample" "$target"

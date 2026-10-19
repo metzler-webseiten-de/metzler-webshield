@@ -12,9 +12,11 @@ Metzler Webshield is a lightweight security plugin and Web Application Firewall 
 * **Rate Limiting & Under Attack Mode:** Throttles floods and scrapers; verified search engines and logged-in users are exempt.
 * **Malware Scanner:** Finds webshells, backdoors and obfuscated code.
 * **Checksum Verification:** Compares WordPress core and plugin files with the official WordPress.org checksums.
-* **File Integrity Monitoring:** Detects new and modified files.
+* **File Integrity Monitoring:** Detects new and modified files and reports every new plugin or theme installation.
+* **Hardening Checks:** Reports hidden administrators and non-admin users or roles that can install or edit code.
 * **Quarantine:** Isolates suspicious files with one-click restore.
-* **Privacy-friendly:** Legitimate visitors are not tracked. All features work locally without an account.
+* **Analysis Lab (optional):** Send a reported file for analysis and get the result by email; unknown plugin and theme files can be sent once or automatically.
+* **Privacy-friendly:** Legitimate visitors are not tracked. All protection features work locally without an account; the analysis lab needs a free Threat Cloud key.
 
 ## Installation
 
@@ -33,6 +35,10 @@ Metzler Webshield is a lightweight security plugin and Web Application Firewall 
 | `metzler_webshield_admin_tabs` | filter | Add dashboard tabs (`id => label`); render via `metzler_webshield_render_tab_{id}` |
 | `metzler_webshield_settings_rows` | action | Output additional `<tr>` rows in the settings table |
 | `metzler_webshield_trusted_proxies` | filter | Proxies with public IPs whose forwarded client IPs are trusted |
+
+## Tests
+
+`tests/e2e/run.sh` needs only Docker. It installs WordPress with 25 popular plugins, scans the clean site (every warning or error is a false positive), then plants the inert samples from `tests/e2e/samples/` and checks that each one is reported. It also checks what the telemetry, lab and lookup requests would send, with the HTTP layer stubbed out. The same test runs on GitHub Actions.
 
 ## License
 

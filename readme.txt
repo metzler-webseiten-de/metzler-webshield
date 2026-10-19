@@ -79,6 +79,7 @@ No. Since Metzler Webshield runs early, it typically blocks bad requests before 
 * Added: Every plugin or theme installation is reported with the user who installed it. Backdoor plugins installed through leaked remote management keys look exactly like a normal installation.
 * Added: The config scan reports users and roles other than administrator that can install, update or edit plugins, themes or core files, like backdoor accounts that hide administrator rights behind the editor role.
 * Fixed: After an update, File Integrity Monitoring only refreshes its snapshot for the updated plugins, themes and language files instead of all of wp-content, which silently accepted every file planted since the last scan.
+* Fixed: New and modified files found by File Integrity Monitoring were only listed in the log and did not count as threats in the dashboard, the dashboard widget and the admin notice.
 
 = 2.0.5 =
 * Added: The core scan reports unknown PHP and .htaccess files in wp-admin, wp-includes and the wp-*.php files in the root directory, where backdoors like to hide between the WordPress files.

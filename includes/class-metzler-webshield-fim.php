@@ -48,7 +48,8 @@ class Metzler_Webshield_FIM {
                 $result = is_object($upgrader) && isset($upgrader->result) && is_array($upgrader->result) ? $upgrader->result : array();
                 if ( ! empty($result['destination']) ) {
                     $paths[] = $result['destination'];
-                    $this->log_install( $type, $result['destination'] );
+                    // Before the refresh, the baseline still knows whether the directory existed
+                    $this->log_install( $type, $result['destination'], $this->in_baseline($result['destination']) );
                 }
             } else {
                 // Single updates pass 'plugin'/'theme', bulk updates 'plugins'/'themes'
@@ -116,12 +117,19 @@ class Metzler_Webshield_FIM {
     }
 
     /**
-     * A legitimate install looks the same as one pushed by an attacker, so every install is reported.
+     * A legitimate install looks the same as one pushed by an attacker, so every new install is reported.
+     * Replacing an installed plugin or theme with an uploaded package (a manual update) is only noted.
      */
-    private function log_install( string $type, string $destination ): void {
+    private function log_install( string $type, string $destination, bool $replaced ): void {
         $relative = self::relative_path( untrailingslashit( wp_normalize_path($destination) ) );
         $user = wp_get_current_user();
         $by = $user->exists() ? $user->user_login : __('no logged-in user (cron, WP-CLI or remote request)', 'metzler-webshield');
+
+        if ( $replaced ) {
+            /* translators: 1: plugin or theme directory, 2: user login */
+            Metzler_Webshield_Logger::log( sprintf( __('Installed plugin or theme replaced with an uploaded package: %1$s (by %2$s).', 'metzler-webshield'), esc_html($relative), esc_html($by) ), "plugins", "info" );
+            return;
+        }
 
         $message = $type === 'theme'
             /* translators: 1: theme directory, 2: user login */
@@ -132,6 +140,13 @@ class Metzler_Webshield_FIM {
         $message .= '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="install:' . esc_attr($relative) . '/">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button>';
 
         Metzler_Webshield_Logger::log( $message, "plugins", "warning" );
+    }
+
+    private function in_baseline( string $path ): bool {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_fim'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        $relative = self::relative_path( untrailingslashit( wp_normalize_path($path) ) );
+        return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM $table_name WHERE file_path LIKE %s LIMIT 1", $wpdb->esc_like($relative) . '/%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
     }
 
     private static function relative_path( string $file ): string {

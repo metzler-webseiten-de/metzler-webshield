@@ -51,6 +51,8 @@ echo "::group::Scan the clean site"
 # The first scan creates the FIM baseline, the second one compares against it
 scan
 scan
+# Replacing an installed plugin with a package (a manual update via upload) is no new install
+wp plugin install akismet --force --quiet
 echo "::endgroup::"
 status=0
 wp eval-file "$E2E/check.php" clean || status=1

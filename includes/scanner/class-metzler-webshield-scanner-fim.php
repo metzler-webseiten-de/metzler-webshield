@@ -61,7 +61,12 @@ class Metzler_Webshield_Scanner_FIM {
                 $path_hash   = md5($relative_path);
                 
                 $baseline_hash = $baseline['hash'][$path_hash] ?? $baseline['path'][$relative_path] ?? null;
-                
+
+                // Logs, caches and empty index.php files that plugins rewrite all the time, none of them can run code
+                if ( $baseline_hash !== $actual_hash && Metzler_Webshield_Scanner_Files::is_inert_php($file) ) {
+                    continue;
+                }
+
                 if ( $baseline_hash === null ) {
                     // File is new!
                     $actions = '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="'.esc_attr($relative_path).'">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button> ';

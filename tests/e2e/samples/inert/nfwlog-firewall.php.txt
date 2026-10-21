@@ -1,0 +1,2 @@
+<?php exit; ?>
+[20/Oct/26:02:52:11 +0200]  #4417290  CRITICAL  6  203.0.113.7  POST /wp-login.php - eval(base64_decode(...)) in POST:x - [eval(base64_decode($_POST[x]));]

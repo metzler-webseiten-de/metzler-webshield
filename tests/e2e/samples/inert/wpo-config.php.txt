@@ -1,0 +1,4 @@
+<?php
+if (!defined('ABSPATH')) die('No direct access allowed');
+
+$GLOBALS['wpo_cache_config'] = json_decode('{"enable_page_caching":true,"page_cache_length":86400,"uploads":"\/var\/www\/html\/wp-content\/uploads"}', true);

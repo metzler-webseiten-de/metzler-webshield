@@ -1,0 +1,12 @@
+# Data files plugins write behind a .php extension, none of them may be reported
+# sample (in samples/inert) | target path in the WordPress root | planted before the FIM baseline (changed afterwards) or after it (new)
+nfwlog-firewall.php.txt | wp-content/nfwlog/firewall_2026-10.php | before
+nfwlog-snapshot.php.txt | wp-content/nfwlog/cache/nfilecheck_snapshot.php | before
+nfwlog-backup.php.txt | wp-content/nfwlog/cache/backup_1792468001_6ad6e421c37d84.50958588.php | after
+wflogs-config.php.txt | wp-content/wflogs/config-synced.php | before
+wpo-config.php.txt | wp-content/wpo-cache/config/config-localhost.php | before
+empty-index.php.txt | wp-content/cache/wpo-cache/localhost/2026/10/index.php | after
+silent-index.php.txt | wp-content/uploads/wp-staging/index.php | before
+deny-web.config.txt | wp-content/uploads/wp-staging/web.config | before
+silent-index.php.txt | wp-content/uploads/wp-staging/tmp/downloads/index.php | after
+deny-web.config.txt | wp-content/uploads/wp-staging/tmp/downloads/web.config | after

@@ -58,8 +58,14 @@ class Metzler_Webshield_Scanner_Plugins {
                 ) );
                 
                 if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-                    /* translators: %s: Plugin name */
-                    Metzler_Webshield_Logger::log(sprintf( __("No wp.org signature available for plugin: %s", "metzler-webshield"), $name ), "plugins" );
+                    $shared = $this->verify_shared_with_free( $slug, $version, $verified );
+                    if ( $shared > 0 ) {
+                        /* translators: 1: Plugin name, 2: number of files */
+                        Metzler_Webshield_Logger::log(sprintf( __('No wp.org signature available for plugin: %1$s. %2$d files match the free version on wp.org.', 'metzler-webshield'), $name, $shared ), "plugins" );
+                    } else {
+                        /* translators: %s: Plugin name */
+                        Metzler_Webshield_Logger::log(sprintf( __("No wp.org signature available for plugin: %s", "metzler-webshield"), $name ), "plugins" );
+                    }
                     continue;
                 }
                 
@@ -149,5 +155,38 @@ class Metzler_Webshield_Scanner_Plugins {
         }
         
         return array('complete' => true);
+    }
+
+    /**
+     * Premium editions (wp-optimize-premium) are not on wp.org, but most of their files are identical
+     * to the free edition of the same version. Files matching its checksums count as verified originals.
+     * Nothing is reported here: the premium edition legitimately differs from the free one.
+     */
+    private function verify_shared_with_free( string $slug, string $version, array &$verified ): int {
+        if ( ! preg_match( '/^(.+)-(premium|pro)$/', $slug, $match ) ) return 0;
+
+        $response = wp_remote_get( 'https://downloads.wordpress.org/plugin-checksums/' . rawurlencode( $match[1] ) . '/' . rawurlencode( $version ) . '.json', array(
+            'timeout' => 15,
+        ) );
+        if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) return 0;
+
+        $checksums_data = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! isset($checksums_data['files']) || ! is_array($checksums_data['files']) ) return 0;
+
+        $plugin_dir = WP_PLUGIN_DIR . '/' . $slug;
+        $count = 0;
+        foreach ( $checksums_data['files'] as $file_name => $hashes ) {
+            if ( ! Metzler_Webshield_Scanner_Core::is_executable_file( $file_name ) ) continue;
+            $local_file = $plugin_dir . '/' . $file_name;
+            if ( ! is_file($local_file) ) continue;
+
+            $actual_hash = md5_file($local_file);
+            if ( Metzler_Webshield_Scanner_Core::hash_matches( $hashes['md5'] ?? null, $actual_hash ) ) {
+                $relative_path = str_replace('\\', '/', ltrim(str_replace(ABSPATH, '', $local_file), '/\\'));
+                $verified[$relative_path] = $actual_hash;
+                $count++;
+            }
+        }
+        return $count;
     }
 }

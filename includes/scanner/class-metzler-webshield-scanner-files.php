@@ -106,12 +106,9 @@ class Metzler_Webshield_Scanner_Files {
                         // Rule 1: No executable code files allowed in Uploads
                         if ( $is_in_uploads ) {
                             if ( in_array($ext, $bad_extensions, true) || in_array($basename, $bad_filenames, true) ) {
-                                $is_safe_dummy = false;
-                                if ( $basename === 'index.php' ) {
-                                    $content = trim(file_get_contents($full_path));
-                                    $is_safe_dummy = self::is_strictly_dummy_index($content);
-                                }
-                                if ( ! $is_safe_dummy ) {
+                                // Backup and staging plugins lock down their folders with silent index.php and deny-only web.config files
+                                $is_harmless = self::is_protection_file($full_path) || ( $ext === 'php' && self::is_inert_php($full_path) );
+                                if ( ! $is_harmless ) {
                                     $threat_found = true;
                                     $threat_rule = 'uploads-exec';
                                     $threat_reason = __('Executable code file in uploads directory.', 'metzler-webshield');
@@ -157,7 +154,8 @@ class Metzler_Webshield_Scanner_Files {
                             // Heuristic scan
                             $content = file_get_contents($full_path);
                             foreach ( $malware_patterns as $rule_id => $rule ) {
-                                if ( preg_match('/' . $rule[0] . '/is', $content) ) {
+                                // Firewall logs record attack payloads behind an exit guard, where they never run
+                                if ( preg_match('/' . $rule[0] . '/is', $content) && ! self::is_inert_php($full_path) ) {
                                     $threat_found = true;
                                     $threat_rule = $rule_id;
                                     $threat_reason = __('Malware signature found:', 'metzler-webshield') . ' ' . $rule[1];
@@ -219,6 +217,69 @@ class Metzler_Webshield_Scanner_Files {
                 return ! preg_match( '/handler|rewrite|<allow\s/i', $content );
         }
         return false;
+    }
+
+    /**
+     * PHP files that can never run code, only hold data behind a .php extension so the web server
+     * does not hand them out: firewall logs and caches (NinjaFirewall, Wordfence wflogs), empty or
+     * silent index.php files of page caches (only under that name), and WP-Optimize's cache configuration.
+     *
+     * The first statement has to be an unconditional exit/die (with nothing but a literal as message)
+     * or __halt_compiler(). Whatever follows is never executed, also not when the file is included.
+     * A conditional guard like defined('ABSPATH') || exit does not count, code after it runs on include.
+     */
+    public static function is_inert_php( string $path ): bool {
+        $content = (string) @file_get_contents( $path, false, null, 0, 2 * 1024 * 1024 ); // phpcs:ignore
+        if ( str_starts_with( $content, "\xEF\xBB\xBF" ) ) {
+            $content = substr( $content, 3 );
+        }
+
+        // Any other new PHP file stays reported even if empty, attackers test write access that way
+        if ( strtolower( basename( $path ) ) === 'index.php' && self::is_strictly_dummy_index( trim( $content ) ) ) {
+            return true;
+        }
+
+        // WP-Optimize writes its config as one json_decode() of a single-quoted literal, nothing else
+        if ( preg_match( '/\A<\?php\s+if \(!defined\(\'ABSPATH\'\)\) die\(\'No direct access allowed\'\);\s+\$GLOBALS\[\'wpo_cache_config\'\] = json_decode\(\'(?:[^\'\\\\]|\\\\.)*\', true\);\s*\z/s', $content ) ) {
+            return true;
+        }
+
+        if ( ! preg_match( '/\A<\?php\s/i', $content ) ) {
+            return false;
+        }
+
+        // Only the guard matters, the rest of the file may be anything
+        $tokens = token_get_all( substr( $content, 0, 512 ) );
+        $tokens = array_values( array_filter( $tokens, function ( $token ) {
+            return ! is_array( $token ) || ! in_array( $token[0], array( T_WHITESPACE, T_COMMENT, T_DOC_COMMENT ), true );
+        } ) );
+        $kind = $tokens[1] ?? null;
+        if ( ! is_array( $tokens[0] ) || $tokens[0][0] !== T_OPEN_TAG || ! is_array( $kind ) ) {
+            return false;
+        }
+        if ( $kind[0] === T_HALT_COMPILER ) {
+            return true;
+        }
+        if ( $kind[0] !== T_EXIT ) {
+            return false;
+        }
+
+        // exit; exit(); exit('text'); exit(1); each ended by ; or a closing tag
+        $rest = array_slice( $tokens, 2, 4 );
+        $end = function ( $token ) {
+            return $token === ';' || ( is_array( $token ) && $token[0] === T_CLOSE_TAG );
+        };
+        if ( isset( $rest[0] ) && $end( $rest[0] ) ) {
+            return true;
+        }
+        if ( ( $rest[0] ?? null ) !== '(' ) {
+            return false;
+        }
+        if ( ( $rest[1] ?? null ) === ')' ) {
+            return isset( $rest[2] ) && $end( $rest[2] );
+        }
+        $literal = is_array( $rest[1] ?? null ) && in_array( $rest[1][0], array( T_CONSTANT_ENCAPSED_STRING, T_LNUMBER ), true );
+        return $literal && ( $rest[2] ?? null ) === ')' && isset( $rest[3] ) && $end( $rest[3] );
     }
 
     /**

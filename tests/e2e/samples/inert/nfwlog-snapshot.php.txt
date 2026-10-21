@@ -1,0 +1,2 @@
+<?php die("Forbidden"); ?>
+/var/www/html/wp-content/plugins/akismet/akismet.php::0644:33:33:3290:1792402547:1792402547

@@ -26,8 +26,8 @@ ACTIVATE=(
     really-simple-ssl formidable siteorigin-panels so-widgets-bundle cookie-law-info
     redirection wp-mail-smtp classic-editor advanced-custom-fields
 )
-# Installed but not activated: other firewalls would interfere with Webshield
-INSTALL_ONLY=( wordfence better-wp-security all-in-one-wp-security-and-firewall wp-file-manager sucuri-scanner )
+# Installed but not activated: other firewalls would interfere with Webshield, wp-optimize is the base of a premium copy
+INSTALL_ONLY=( wordfence better-wp-security all-in-one-wp-security-and-firewall wp-file-manager sucuri-scanner wp-optimize )
 
 echo "::group::Install WordPress"
 wp core download --quiet
@@ -44,6 +44,9 @@ done
 for slug in "${INSTALL_ONLY[@]}"; do
     wp plugin install "$slug" --quiet || echo "::warning::Could not install $slug"
 done
+# A premium edition is not on wp.org, the files it shares with the free one still count as verified.
+# The copy keeps the free edition's UpdraftCentral upload code, which the dropper heuristic matches.
+cp -r wp-content/plugins/wp-optimize wp-content/plugins/wp-optimize-premium
 wp plugin list --fields=name,status,version
 echo "::endgroup::"
 
@@ -58,9 +61,25 @@ scan() {
     wp eval 'Metzler_Webshield_Queue::cron_start_scan();'
 }
 
+# Plugin data files from inert.txt: those marked "before" exist when the FIM baseline is built
+plant_inert() {
+    while IFS="|" read -r sample target when; do
+        sample="${sample// /}"; target="${target// /}"; when="${when// /}"
+        [[ -z "$sample" || "$sample" == \#* ]] && continue
+        if [[ "$1" == "$when" ]]; then
+            mkdir -p "$(dirname "$target")"
+            cp "$E2E/samples/inert/$sample" "$target"
+        elif [[ "$1" == "after" ]]; then
+            printf '\n' >> "$target" # Logs and caches are rewritten all the time
+        fi
+    done < "$E2E/inert.txt"
+}
+
 echo "::group::Scan the clean site"
+plant_inert before
 # The first scan creates the FIM baseline, the second one compares against it
 scan
+plant_inert after
 scan
 # Replacing an installed plugin with a package (a manual update via upload) is no new install
 wp plugin install akismet --force --quiet

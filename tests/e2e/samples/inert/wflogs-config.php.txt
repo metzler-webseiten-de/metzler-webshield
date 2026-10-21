@@ -1,0 +1,2 @@
+<?php exit('Access denied'); __halt_compiler(); ?>
+a:2:{s:8:"lastSync";i:1792402547;s:7:"payload";s:24:"file_put_contents($f, x)";}

@@ -39,11 +39,8 @@ class Metzler_Webshield_Rate_Limiter {
      * Main entry point for rate limit inspection.
      */
     public static function check_request(): void {
-        // 1. Check if rate limiting or under attack mode is enabled
-        $rate_limit_enabled   = get_option( 'metzler_webshield_enable_rate_limiting', '1' ) === '1';
-        $under_attack_enabled = get_option( 'metzler_webshield_under_attack_mode', '0' ) === '1';
-
-        if ( ! $rate_limit_enabled && ! $under_attack_enabled ) {
+        // 1. Check if rate limiting is enabled
+        if ( get_option( 'metzler_webshield_enable_rate_limiting', '1' ) !== '1' ) {
             return;
         }
 
@@ -110,15 +107,8 @@ class Metzler_Webshield_Rate_Limiter {
             return;
         }
 
-        // 10. Under Attack Mode: Challenge every uncached visitor
-        if ( $under_attack_enabled ) {
-            self::render_under_attack_page( $client_ip );
-        }
-
-        // 11. Record request & evaluate rate limits
-        if ( $rate_limit_enabled ) {
-            self::record_and_evaluate( $client_ip, $uri, $user_agent );
-        }
+        // 10. Record request & evaluate rate limits
+        self::record_and_evaluate( $client_ip, $uri, $user_agent );
     }
 
     /**
@@ -476,154 +466,6 @@ class Metzler_Webshield_Rate_Limiter {
                 if (seconds <= 0) {
                     clearInterval(interval);
                     window.location.reload();
-                }
-            }, 1000);
-        })();
-    </script>
-</body>
-</html>
-        <?php
-        exit;
-    }
-
-    /**
-     * Renders an Under Attack Mode security verification page with 1-click challenge and 3-second auto-browser-check.
-     */
-    private static function render_under_attack_page( string $ip ): void {
-        status_header( 503 );
-        nocache_headers();
-        header( 'Retry-After: 5' );
-        header( 'Content-Type: text/html; charset=UTF-8' );
-
-        $token = self::generate_clearance_token( $ip );
-        ?>
-<!DOCTYPE html>
-<html lang="<?php echo esc_attr( get_locale() ); ?>">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title><?php echo esc_html__( 'Security Check', 'metzler-webshield' ); ?> &lsaquo; <?php echo esc_html( function_exists( 'get_bloginfo' ) ? get_bloginfo( 'name' ) : get_option( 'blogname', 'WordPress' ) ); ?></title>
-    <style>
-        html {
-            background: #f0f0f1;
-        }
-        body {
-            background: #fff;
-            border: 1px solid #c3c4c7;
-            color: #3c434a;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-            margin: 50px auto;
-            padding: 2em 2.5em;
-            max-width: 650px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            border-radius: 4px;
-        }
-        h1 {
-            border-bottom: 1px solid #dadada;
-            clear: both;
-            color: #1d2327;
-            font-size: 22px;
-            margin: 0 0 16px 0;
-            padding: 0 0 12px 0;
-            font-weight: 600;
-        }
-        p {
-            font-size: 14px;
-            line-height: 1.6;
-            margin: 16px 0;
-        }
-        .mws-timer-box {
-            background: #f6f7f7;
-            border-left: 4px solid #d63638;
-            padding: 12px 16px;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-        .mws-countdown {
-            font-weight: bold;
-            color: #d63638;
-            font-family: monospace;
-            font-size: 16px;
-        }
-        .mws-actions {
-            margin-top: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .button {
-            background: #2271b1;
-            border-color: #2271b1;
-            color: #fff;
-            text-decoration: none;
-            text-shadow: none;
-            display: inline-block;
-            font-size: 13px;
-            line-height: 2.15384615;
-            min-height: 32px;
-            margin: 0;
-            padding: 0 14px;
-            cursor: pointer;
-            border-width: 1px;
-            border-style: solid;
-            -webkit-appearance: none;
-            border-radius: 3px;
-            white-space: nowrap;
-            box-sizing: border-box;
-            font-weight: 500;
-        }
-        .button:hover, .button:focus {
-            background: #135e96;
-            border-color: #135e96;
-            color: #fff;
-        }
-        .mws-footer {
-            margin-top: 28px;
-            padding-top: 14px;
-            border-top: 1px solid #f0f0f1;
-            font-size: 11px;
-            color: #8c8f94;
-        }
-    </style>
-</head>
-<body id="error-page">
-    <h1><?php echo esc_html__( 'Security Check', 'metzler-webshield' ); ?></h1>
-    <p>
-        <?php echo esc_html__( 'This website is currently in High Security Mode to protect against an ongoing cyber attack. Please verify that you are a human visitor to proceed.', 'metzler-webshield' ); ?>
-    </p>
-
-    <div class="mws-timer-box">
-        <?php echo esc_html__( 'Checking your browser before accessing', 'metzler-webshield' ); ?>...
-        <span class="mws-countdown" id="mws-timer">3</span> <?php echo esc_html__( 'seconds', 'metzler-webshield' ); ?>
-    </div>
-
-    <form method="POST" action="" class="mws-actions" id="mws-challenge-form">
-        <input type="hidden" name="mws_clearance_token" value="<?php echo esc_attr( $token ); ?>">
-        <button type="submit" class="button button-primary">
-            <?php echo esc_html__( 'I am a human (Continue)', 'metzler-webshield' ); ?>
-        </button>
-    </form>
-
-    <div class="mws-footer">
-        <?php echo esc_html__( 'Protected by Metzler Webshield Security', 'metzler-webshield' ); ?>
-    </div>
-
-    <script>
-        (function() {
-            var seconds = 3;
-            var timerDisplay = document.getElementById('mws-timer');
-            var interval = setInterval(function() {
-                seconds--;
-                if (timerDisplay) {
-                    timerDisplay.textContent = seconds;
-                }
-                if (seconds <= 0) {
-                    clearInterval(interval);
-                    var form = document.getElementById('mws-challenge-form');
-                    if (form) {
-                        form.submit();
-                    }
                 }
             }, 1000);
         })();

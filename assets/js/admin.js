@@ -657,7 +657,6 @@ jQuery(document).ready(function($) {
         const wafEnabled = $('#metzler-webshield-setting-waf').is(':checked') ? '1' : '0';
         const xmlrpcDisabled = $('#metzler-webshield-setting-xmlrpc').is(':checked') ? '1' : '0';
         const ratelimitEnabled = $('#metzler-webshield-setting-ratelimit').is(':checked') ? '1' : '0';
-        const underAttackEnabled = $('#metzler-webshield-setting-under-attack').is(':checked') ? '1' : '0';
         const telemetryEnabled = $('#metzler-webshield-setting-telemetry').is(':checked') ? '1' : '0';
         const autoSubmit = $('#metzler-webshield-setting-auto-submit').val() || 'ask';
         btn.prop('disabled', true);
@@ -673,7 +672,6 @@ jQuery(document).ready(function($) {
             enable_waf: wafEnabled,
             disable_xmlrpc: xmlrpcDisabled,
             enable_ratelimit: ratelimitEnabled,
-            under_attack_mode: underAttackEnabled,
             enable_telemetry: telemetryEnabled,
             auto_submit: autoSubmit
         }, function(res) {

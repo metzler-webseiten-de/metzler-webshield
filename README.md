@@ -9,7 +9,7 @@ Metzler Webshield is a lightweight security plugin and Web Application Firewall 
 ## Features
 
 * **Web Application Firewall:** Blocks SQL injection, cross-site scripting (XSS), path traversal and malicious bots.
-* **Rate Limiting & Under Attack Mode:** Throttles floods and scrapers; verified search engines and logged-in users are exempt.
+* **Rate Limiting:** Throttles floods and scrapers; verified search engines and logged-in users are exempt.
 * **Malware Scanner:** Finds webshells, backdoors and obfuscated code.
 * **Checksum Verification:** Compares WordPress core and plugin files with the official WordPress.org checksums.
 * **File Integrity Monitoring:** Detects new and modified files and reports every new plugin or theme installation.

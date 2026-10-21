@@ -45,8 +45,8 @@ class Metzler_Webshield {
             $waf->run();
         }
 
-        // General Rate Limiter & Under Attack Mode Shield
-        if ( get_option('metzler_webshield_enable_rate_limiting', '1') === '1' || get_option('metzler_webshield_under_attack_mode', '0') === '1' ) {
+        // General Rate Limiter
+        if ( get_option('metzler_webshield_enable_rate_limiting', '1') === '1' ) {
             Metzler_Webshield_Rate_Limiter::check_request();
         }
     }

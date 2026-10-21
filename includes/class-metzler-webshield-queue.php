@@ -332,7 +332,6 @@ class Metzler_Webshield_Queue {
         $enable_waf = isset($_POST['enable_waf']) ? sanitize_text_field($_POST['enable_waf']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $disable_xmlrpc = isset($_POST['disable_xmlrpc']) ? sanitize_text_field($_POST['disable_xmlrpc']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $enable_ratelimit = isset($_POST['enable_ratelimit']) ? sanitize_text_field($_POST['enable_ratelimit']) : '1'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
-        $under_attack_mode = isset($_POST['under_attack_mode']) ? sanitize_text_field($_POST['under_attack_mode']) : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $enable_telemetry = isset($_POST['enable_telemetry']) && sanitize_text_field($_POST['enable_telemetry']) === '1' ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput, WordPress.Security.NonceVerification
         $auto_submit = isset($_POST['auto_submit']) ? sanitize_key( wp_unslash( $_POST['auto_submit'] ) ) : Metzler_Webshield_Auto_Submit::mode(); // phpcs:ignore WordPress.Security.NonceVerification
         
@@ -344,7 +343,6 @@ class Metzler_Webshield_Queue {
         update_option('metzler_webshield_enable_waf', $enable_waf);
         update_option('metzler_webshield_disable_xmlrpc', $disable_xmlrpc);
         update_option('metzler_webshield_enable_rate_limiting', $enable_ratelimit);
-        update_option('metzler_webshield_under_attack_mode', $under_attack_mode);
         update_option('metzler_webshield_enable_telemetry', $enable_telemetry);
         if ( in_array( $auto_submit, Metzler_Webshield_Auto_Submit::MODES, true ) ) {
             update_option( Metzler_Webshield_Auto_Submit::OPTION, $auto_submit );

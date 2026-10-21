@@ -3,7 +3,7 @@ Contributors: metzler-webseiten, metzlerwp
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 2.0.6
+Stable tag: 2.0.7
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -17,7 +17,7 @@ Metzler Webshield is an enterprise-grade security solution for WordPress. It uti
 ### Core Features
 
 *   **Real-time Web Application Firewall (WAF):** Blocks SQL Injections, Cross-Site Scripting (XSS), path traversal and malicious bots before they reach WordPress.
-*   **Rate Limiting & Under Attack Mode:** Throttles aggressive scrapers and floods; an emergency mode lets only verified humans through.
+*   **Rate Limiting:** Throttles aggressive scrapers and floods; verified search engines and logged-in users are exempt.
 *   **File Integrity Monitoring (FIM):** Tracks all file changes in your WP environment and alerts you to unauthorized modifications or hacker uploads.
 *   **Core & Plugin Signature Check:** Compares WordPress core and plugin files with the official checksums from WordPress.org.
 *   **Heuristic Malware Scanner:** Performs deep-scans on your file system to detect obfuscated backdoors, web shells, and malicious code injections.
@@ -77,6 +77,12 @@ Only checksum requests to WordPress.org during scans and an anonymous request fo
 No. Since Metzler Webshield runs early, it typically blocks bad requests before they hit your cache.
 
 == Changelog ==
+
+= 2.0.7 =
+* Fixed: Log, cache and configuration files that plugins keep behind a .php extension (e.g. NinjaFirewall's nfwlog folder, Wordfence's wflogs, WP-Optimize's cache configuration and the empty index.php files of its page cache) are no longer reported by File Integrity Monitoring and the malware scanner. Only files that can never run code qualify: their first statement ends the script, or they are an index.php with nothing but a comment. Any other new PHP file is still reported, even when it is empty. Attack payloads recorded in firewall logs no longer match malware signatures.
+* Fixed: Protection files in the uploads folder that only deny access (silent index.php, web.config without handlers or rewrites, e.g. from WP Staging) are no longer reported as executable files.
+* Fixed: Premium plugins are not on WordPress.org, so their files could not be compared with the originals and were scanned with malware heuristics (e.g. WP-Optimize Premium was reported as a file dropper because of its remote management upload code). Most files of a premium plugin are identical to its free edition: files that match the free edition of the same version on WordPress.org exactly now count as originals. Files only the premium plugin has are still scanned.
+* Removed: The "Under Attack" mode. It checked visitors only after WordPress had loaded, so it could not take load off the server during a DDoS, and its check was easy for bots to pass. Rate limiting stays. Real DDoS attacks have to be stopped before the server, e.g. by Cloudflare or the hosting provider. Sites that had the mode on are back to normal operation after the update.
 
 = 2.0.6 =
 * Added: Every new plugin or theme installation is reported with the user who installed it. Backdoor plugins installed through leaked remote management keys look exactly like a normal installation. Replacing an installed plugin or theme with an uploaded package (a manual update) is only noted in the log.

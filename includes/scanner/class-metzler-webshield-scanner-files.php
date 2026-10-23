@@ -314,7 +314,8 @@ class Metzler_Webshield_Scanner_Files {
             }
         }
         if ( empty($expected) ) {
-            return false;
+            // Premium plugins and themes have no wp.org checksums, the lab may have approved the file instead
+            return Metzler_Webshield_Auto_Submit::is_cloud_clean( $relative_path, $full_path );
         }
         $actual = md5_file($full_path);
         foreach ( $expected as $hashes ) {

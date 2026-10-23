@@ -29,6 +29,13 @@ class Metzler_Webshield_Findings {
         return $wpdb->prefix . 'metzler_webshield_findings';
     }
 
+    /**
+     * The table name once something was recorded, otherwise an empty string.
+     */
+    public static function table_if_exists(): string {
+        return get_option( self::DB_VERSION_OPTION ) === self::DB_VERSION ? self::table() : '';
+    }
+
     public static function create_table(): void {
         global $wpdb;
         $table_name = self::table(); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter

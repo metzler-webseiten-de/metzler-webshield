@@ -1,6 +1,19 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 class Metzler_Webshield_Queue {
+
+    const SCAN_MARK_OPTION = 'metzler_webshield_scan_log_mark';
+
+    /** The log type each scan task writes its warnings with. */
+    const TASK_LOG_TYPES = array(
+        'scan_updates' => 'updates',
+        'scan_plugins' => 'plugins',
+        'scan_core'    => 'core',
+        'scan_files'   => 'files',
+        'scan_fim'     => 'fim',
+        'scan_config'  => 'config',
+    );
+
     public static function create_table(): void {
         global $wpdb;
         $table_name = $wpdb->prefix . 'metzler_webshield_queue'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
@@ -72,6 +85,7 @@ class Metzler_Webshield_Queue {
             
             if ( ! $task ) {
                 Metzler_Webshield_Storage::delete_scan_lists();
+                self::resolve_superseded();
                 Metzler_Webshield_Logger::log( __("Scan completed.", "metzler-webshield"), "system", "success");
                 update_option('metzler_webshield_last_scan', current_time('mysql'));
                 wp_send_json_success(array('status' => 'complete', 'message' => __('Scan completed', 'metzler-webshield')));
@@ -386,6 +400,33 @@ class Metzler_Webshield_Queue {
                 'status' => 'pending'
             ));
         }
+
+        // Where this scan starts in the log, so the warnings it supersedes can be resolved once it completes
+        $logs_table = $wpdb->prefix . 'metzler_webshield_logs'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        update_option( self::SCAN_MARK_OPTION, array(
+            'log_id' => (int) $wpdb->get_var( "SELECT MAX(id) FROM $logs_table" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+            'types'  => $types,
+        ), false );
+    }
+
+    /**
+     * A completed scan replaces the warnings of the checks it ran: whatever is still a problem was just logged
+     * again, so fixed problems (an updated plugin, a deleted file) and duplicates from earlier scans disappear.
+     * One-time events (installs, lab results) have log types of their own and stay until the owner resolves them.
+     * A cancelled or unfinished scan resolves nothing.
+     */
+    private static function resolve_superseded(): void {
+        $mark = get_option( self::SCAN_MARK_OPTION );
+        delete_option( self::SCAN_MARK_OPTION );
+        if ( ! is_array( $mark ) || empty( $mark['log_id'] ) ) return;
+
+        $log_types = array();
+        foreach ( (array) ( $mark['types'] ?? array() ) as $task_type ) {
+            if ( isset( self::TASK_LOG_TYPES[ $task_type ] ) ) {
+                $log_types[] = self::TASK_LOG_TYPES[ $task_type ];
+            }
+        }
+        Metzler_Webshield_Logger::resolve_superseded( (int) $mark['log_id'], $log_types );
     }
 
     private static function run_task( $task ): array {
@@ -449,6 +490,7 @@ class Metzler_Webshield_Queue {
             $task = $wpdb->get_row("SELECT * FROM $table_name WHERE status = 'pending' ORDER BY id ASC LIMIT 1"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
             if ( ! $task ) {
                 Metzler_Webshield_Storage::delete_scan_lists();
+                self::resolve_superseded();
                 update_option('metzler_webshield_last_scan', current_time('mysql'));
                 Metzler_Webshield_Logger::log(__("Automatic background scan completed successfully.", "metzler-webshield"), "system", "success" );
                 break;

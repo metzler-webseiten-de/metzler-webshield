@@ -49,6 +49,7 @@ $metzler_webshield_options = array(
 	'metzler_webshield_fim_last_baseline',
 	'metzler_webshield_last_scan',
 	'metzler_webshield_last_scan_start',
+	'metzler_webshield_scan_log_mark',
 	'metzler_webshield_whitelist',
 	'metzler_webshield_rules_synced',
 	'metzler_webshield_extended_protection',

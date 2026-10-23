@@ -115,6 +115,13 @@ scan
 echo "::endgroup::"
 wp eval-file "$E2E/check.php" detect "$E2E/expected.txt" || status=1
 wp eval-file "$E2E/check.php" findings "$E2E/expected.txt" || status=1
+
+echo "::group::Scan once more"
+scan
+echo "::endgroup::"
+# Still everything detected (installs are no scan result and must stay), but nothing listed twice
+wp eval-file "$E2E/check.php" detect "$E2E/expected.txt" || status=1
+wp eval-file "$E2E/check.php" unique || status=1
 wp eval-file "$E2E/telemetry.php" || status=1
 wp eval-file "$E2E/lab.php" || status=1
 

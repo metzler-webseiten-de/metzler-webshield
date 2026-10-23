@@ -243,10 +243,10 @@ class Metzler_Webshield_Auto_Submit {
                 $actions = '<br><button type="button" class="button button-small button-primary metzler-webshield-q-move" data-path="' . esc_attr( $rel_path ) . '" style="background:#d63638;border-color:#d63638;">' . esc_html__( 'Move to quarantine', 'metzler-webshield' ) . '</button>';
                 if ( $status === 'malicious' ) {
                     /* translators: %s: file path */
-                    Metzler_Webshield_Logger::log( sprintf( __( 'Critical: the lab confirmed malware in %s', 'metzler-webshield' ), esc_html( $rel_path ) ) . $actions, 'files', 'error' );
+                    Metzler_Webshield_Logger::log( sprintf( __( 'Critical: the lab confirmed malware in %s', 'metzler-webshield' ), esc_html( $rel_path ) ) . $actions, 'lab', 'error' );
                 } else {
                     /* translators: %s: file path */
-                    Metzler_Webshield_Logger::log( sprintf( __( 'The lab rated this file as suspicious, it differs from the original of its plugin or contains questionable code. Move it to quarantine if the site works without it: %s', 'metzler-webshield' ), esc_html( $rel_path ) ) . $actions, 'files', 'warning' );
+                    Metzler_Webshield_Logger::log( sprintf( __( 'The lab rated this file as suspicious, it differs from the original of its plugin or contains questionable code. Move it to quarantine if the site works without it: %s', 'metzler-webshield' ), esc_html( $rel_path ) ) . $actions, 'lab', 'warning' );
                 }
                 Metzler_Webshield_Findings::report( $rel_path, $abs_path, 'lab', 'lab-' . $status );
             }

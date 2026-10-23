@@ -139,7 +139,8 @@ class Metzler_Webshield_FIM {
         // The trailing slash keeps the token from matching other directories that start with the same name
         $message .= '<br><button type="button" class="button button-small metzler-webshield-q-safe" data-path="install:' . esc_attr($relative) . '/">' . esc_html__('Mark as safe', 'metzler-webshield') . '</button>';
 
-        Metzler_Webshield_Logger::log( $message, "plugins", "warning" );
+        // A log type of its own: scans do not re-check installs, so their warnings must not resolve this one
+        Metzler_Webshield_Logger::log( $message, "install", "warning" );
     }
 
     private function in_baseline( string $path ): bool {

@@ -64,6 +64,23 @@ class Metzler_Webshield_Logger {
     }
 
     /**
+     * Resolves the warnings of the given log types written up to the given log id, i.e. before a scan that
+     * has just checked the same things again. Install notices of older versions (log type "plugins") are kept.
+     */
+    public static function resolve_superseded( int $up_to_id, array $types ): void {
+        if ( $up_to_id <= 0 || empty( $types ) ) return;
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'metzler_webshield_logs'; // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+        $placeholders = implode( ',', array_fill( 0, count( $types ), '%s' ) );
+        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
+            $wpdb->prepare( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter
+                "UPDATE $table_name SET severity = 'resolved' WHERE id <= %d AND severity IN ('warning', 'error') AND type IN ($placeholders) AND message NOT LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                array_merge( array( $up_to_id ), array_values( $types ), array( '%' . $wpdb->esc_like( 'data-path="install:' ) . '%' ) )
+            )
+        );
+    }
+
+    /**
      * Get active security threats on the server.
      * Excludes 'waf' (blocked bots/attacks) and 'system' messages.
      *

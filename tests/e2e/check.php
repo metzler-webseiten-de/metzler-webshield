@@ -6,6 +6,7 @@
  * findings: every planted sample of expected.txt is recorded as a finding with its current SHA-256
  * detect: every line of expected.txt needs an active threat whose message contains its expected text,
  *         counted like the dashboard does, so a finding the dashboard hides counts as not detected
+ * unique: no active threat is listed twice, a new scan replaces the warnings of the one before
  */
 global $wpdb;
 
@@ -43,6 +44,19 @@ $rows = $mode === 'clean'
 $messages = array_map( function ( $row ) {
     return sprintf( '[%s/%s] %s', $row->type, $row->severity, trim( preg_replace( '/<br>.*/s', '', $row->message ) ) );
 }, $rows );
+
+if ( $mode === 'unique' ) {
+    $duplicates = array_keys( array_filter( array_count_values( $messages ), function ( $count ) { return $count > 1; } ) );
+    foreach ( $duplicates as $message ) {
+        echo "::error::Listed more than once: $message\n";
+    }
+    if ( $duplicates ) {
+        WP_CLI::warning( count( $duplicates ) . ' threat(s) listed more than once after a new scan.' );
+        exit( 1 );
+    }
+    WP_CLI::success( 'A new scan replaced the warnings of the previous one: ' . count( $messages ) . ' active threats, none twice.' );
+    return;
+}
 
 if ( $mode === 'clean' ) {
     if ( $findings_exist ) {

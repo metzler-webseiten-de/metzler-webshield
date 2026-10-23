@@ -82,6 +82,7 @@ No. Since Metzler Webshield runs early, it typically blocks bad requests before 
 * Added: Files of premium plugins and themes that Metzler Webshield checked and found clean are no longer scanned with malware heuristics, so they no longer cause false alarms. With telemetry sharing and "Unknown files" enabled, the files are compared again every 6 hours, open warnings for approved files are resolved automatically. A changed file has a different hash and is scanned again.
 * Added: Files the Metzler Webshield lab rated as malware or suspicious are reported in the log with a quarantine button, also on sites that never sent the file in themselves.
 * Changed: "Unknown files" no longer sends the content of every unknown file. Hash, path and plugin version are compared, contents are only sent for files the scanner reported or that differ from the vendor's original of the same plugin version. Files another site already sent in are never sent again.
+* Fixed: A completed scan now replaces the warnings of the previous one. Problems that were fixed meanwhile (e.g. an updated plugin) no longer stay in the list for up to 7 days, and the same warning is no longer counted once per scan. Notices about new installations and lab results stay until you resolve them.
 * Changed: The settings and the question about unknown files now say clearly that "Always send automatically" also sends files found later without asking again.
 
 = 2.0.7 =

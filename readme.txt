@@ -3,7 +3,7 @@ Contributors: metzler-webseiten, metzlerwp
 Tags: security, firewall, waf, malware scanner, antivirus
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 2.0.7
+Stable tag: 2.0.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -77,6 +77,12 @@ Only checksum requests to WordPress.org during scans and an anonymous request fo
 No. Since Metzler Webshield runs early, it typically blocks bad requests before they hit your cache.
 
 == Changelog ==
+
+= 2.0.8 =
+* Added: Files of premium plugins and themes that Metzler Webshield checked and found clean are no longer scanned with malware heuristics, so they no longer cause false alarms. With telemetry sharing and "Unknown files" enabled, the files are compared again every 6 hours, open warnings for approved files are resolved automatically. A changed file has a different hash and is scanned again.
+* Added: Files the Metzler Webshield lab rated as malware or suspicious are reported in the log with a quarantine button, also on sites that never sent the file in themselves.
+* Changed: "Unknown files" no longer sends the content of every unknown file. Hash, path and plugin version are compared, contents are only sent for files the scanner reported or that differ from the vendor's original of the same plugin version. Files another site already sent in are never sent again.
+* Changed: The settings and the question about unknown files now say clearly that "Always send automatically" also sends files found later without asking again.
 
 = 2.0.7 =
 * Fixed: Log, cache and configuration files that plugins keep behind a .php extension (e.g. NinjaFirewall's nfwlog folder, Wordfence's wflogs, WP-Optimize's cache configuration and the empty index.php files of its page cache) are no longer reported by File Integrity Monitoring and the malware scanner. Only files that can never run code qualify: their first statement ends the script, or they are an index.php with nothing but a comment. Any other new PHP file is still reported, even when it is empty. Attack payloads recorded in firewall logs no longer match malware signatures.
